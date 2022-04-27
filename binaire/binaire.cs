@@ -54,18 +54,22 @@ namespace binaire
                 {
                     _continue = false;
                 }
+
                 else if (stringComparer.Equals("help", command) || stringComparer.Equals("h", command))
                 {
                     printHelp();
                 }
+
                 else if (stringComparer.Equals("c", command))
                 {
                     CloseComPort();
                 }
+
                 else if (stringComparer.Equals("o", command))
                 {
                     OpenComPort();
                 }
+
                 else if (command.StartsWith("o "))
                 {
                     string[] split = command.Split(' ');
@@ -99,19 +103,32 @@ namespace binaire
                         Console.WriteLine("Please check your syntax! <COMx> must be a valid COM port name like 'COM7'. Exception thrown:" + e.Message);
                     }
                 }
+
                 else if (stringComparer.Equals("r", command))
                 {
                     if (comConnected) { commandRead(); }
                     else { Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info."); }
                 }
-                else if (stringComparer.Equals("s", command))
-                        {
-                    commandStore();
+
+                else if (stringComparer.Equals("a", command))
+                {
+                    if (comConnected) { commandAuto(); }
+                    else { Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info."); }
+                    
                 }
+
+                else if (stringComparer.Equals("s", command))
+                {
+                    if (comConnected) { commandStore(); }
+                    else { Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info."); }
+                }
+
                 else if (command.StartsWith("s ") && command.Length > 2)
                 {
-                    commandStore(command.Remove(0, 2));
+                    if (comConnected) { commandStore(command.Remove(0, 2)); }
+                    else { Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info."); }
                 }
+
                 else if (command.StartsWith("cb ") || command.StartsWith("ch "))
                 {
                     string[] split = command.Split(' ');
@@ -234,6 +251,50 @@ namespace binaire
         }
 
 
+        private static void commandAuto()
+        {
+            Console.WriteLine("Automatic mode activated. binaire will listen to the COM port for srampuf data packets.");
+            Console.WriteLine("Enter 'stop' to exit automatic mode. All other input is disabled.");
+
+            _serialPort.DataReceived += autoDataReceivedAction;
+
+            bool _continueAuto = true;
+            while (_continueAuto)
+            {
+                string? s = Console.ReadLine();
+                if (s == "stop") { _continueAuto = false; }
+            }
+
+            Console.WriteLine("Stopping auto mode.");
+            _serialPort.DataReceived -= autoDataReceivedAction;
+        }
+
+        private static void autoDataReceivedAction(object sender, EventArgs args)
+        {
+            SerialPort port = (SerialPort)sender;
+            if (port == null) { return; }
+            if (port.BytesToRead < 40) { return; }
+
+            Console.WriteLine("Data received! {0} bytes are available.", port.BytesToRead);
+            Console.WriteLine("Let's wait 1000 ms...");
+            Console.WriteLine("{0} bytes are now available. Reading packet...", port.BytesToRead);
+
+            Thread.Sleep(1000);
+
+            readBytes = 0;
+            try
+            {
+                readBytes = port.Read(dataBuffer, 0, dataBuffer.Length);
+                if (readBytes > 0) Console.WriteLine(Encoding.UTF8.GetString(dataBuffer, 0, readBytes));
+            }
+            catch (TimeoutException)
+            {
+                Console.WriteLine("Timeout during read. Returning to binaire.");
+            }
+
+        }
+
+
         // Decodes a packet sent from STM according to the protocol specified in datenbank.md
         // Subsequently, the decoded packet is used to instantiate a Reading, holding all relevant data.
         private static void decodePacket()
@@ -250,7 +311,7 @@ namespace binaire
             Console.WriteLine("Packet received!");
 
             var rcvBoardID = dataBuffer[4..16];
-            int[] boardID = new int[Reading.IdLength];
+            int[] boardID = new int[Board.IdLength];
             Buffer.BlockCopy(rcvBoardID, 0, boardID, 0, rcvBoardID.Length);
 
             var rcvBoardSpecifier = dataBuffer[16..20];
@@ -274,7 +335,8 @@ namespace binaire
             if (!zeroBytes.SequenceEqual(new byte[] { 0, 0 })) { throw new NotSupportedException("Invalid protocol end."); }
 
             Console.WriteLine("Packet seems fine!");
-            Reading r = new Reading(boardID, boardSpecifier, startAddress, endAddress, tempF, fingerprint);
+            Board b = new Board(boardSpecifier, boardID[0], boardID[1], boardID[2], "NucleoF401RE");
+            Reading r = new Reading(b, startAddress, endAddress, tempF, fingerprint);
             Console.WriteLine(r);
         }
 
@@ -312,6 +374,9 @@ namespace binaire
             Console.WriteLine("                 highlighted side by side.");
             Console.WriteLine("ch <f1> <f2>     Compare two files with hexadecimal formatting. Differences will be");
             Console.WriteLine("                 highlighted side by side.");
+            Console.WriteLine("a        Automatic mode. Shifts the program to go in a loop, waiting for data to be");
+            Console.WriteLine("         received. Received data packets are automatically sent to the database. This");
+            Console.WriteLine("         is meant to be used with the srampuf C project and smarttex database. EXPERIMENTAL.");
             Console.WriteLine("quit, q, exit    Exit binaire.");
         }
     }
