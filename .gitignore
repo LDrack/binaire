@@ -4,3 +4,5 @@
 *.pdb
 *.cache
 binaire/obj/*
+binaire/bin
+!binaire/bin/Debug/net6.0/binaire.exe
