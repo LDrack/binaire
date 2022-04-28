@@ -11,7 +11,7 @@ namespace binaire
     // - STM32 Nucleo-F401RE reads SRAM PUF, sends packet data over serial interface to PC
     // - binaire (this program) reads packet over COM port, decodes it and instantiates a Reading
     // - Reading class is sent to database using Entity Framework
-    internal class Reading
+    public class Reading
     {
         // Entity Framework uses naming conventions: https://www.entityframeworktutorial.net/code-first/code-first-conventions.aspx
         // Properties of this class will translate to columns in the final database.
@@ -29,21 +29,19 @@ namespace binaire
         public byte[] Fingerprint { get; set; }
 
 
-        public Reading(Board board, int pufStart, int pufEnd, float temperature, byte[] fp)
+        public Reading(int pufStart, int pufEnd, float temperature, byte[] fingerprint)
         {
-            if (board == null) { throw new ArgumentException("board must not be null."); }
-            if (fp == null) { throw new ArgumentException("fp must not be null."); }
+            if (fingerprint == null) { throw new ArgumentException("fp must not be null."); }
             if (pufStart < 0) { throw new ArgumentException("pufStart must be positive."); }
             if (pufEnd < 0) { throw new ArgumentException("pufEnd must be positive."); }
             if (pufEnd <= pufStart) { throw new ArgumentException("pufEnd must be a larger address than pufStart."); }
             if (temperature <= -273.0 || temperature > 250.0) { throw new ArgumentException("temperature is invalid."); }
 
-            Board = board;
             PufStart = pufStart;
             PufEnd = pufEnd;
             Timestamp = DateTime.Now;
             Temperature = temperature;
-            Fingerprint = fp;
+            Fingerprint = fingerprint;
         }
 
         public override string ToString()

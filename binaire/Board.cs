@@ -13,8 +13,12 @@ namespace binaire
         public const int IdLength = 3;
 
         // Board specifiers - these are defined in the srampuf C project.
-        // For now, only Nucleo F401RE is used, so this is kept simple.
-        public const int BS_NucleoF401RE = 1;
+        // Cast this enum to int to instantiate class.
+        public enum BoardSpecifiers
+        {
+            Default = 0,
+            NucleoF401RE = 1
+        }
 
         public int BoardId { get; set; }
         public int BoardSpecifier { get; set; }
@@ -23,13 +27,14 @@ namespace binaire
         public int BoardId3 { get; set; }
         public string Description { get; set; }
 
-        public Board(int boardSpecifier, int boardId1, int boardId2, int boardId3, string description)
+        public Board(int boardSpecifier, int boardId1, int boardId2, int boardId3)
         {
             BoardSpecifier = boardSpecifier;
             BoardId1 = boardId1;
             BoardId2 = boardId2;
             BoardId3 = boardId3;
-            Description = description;
+            string? descString = Enum.GetName(typeof(BoardSpecifiers), BoardSpecifier);
+            Description = descString == null ? "" : descString;
         }
     }
 }

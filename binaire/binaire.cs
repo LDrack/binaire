@@ -14,10 +14,9 @@ namespace binaire
     internal class binaire
     {
         private static SerialPort _serialPort;
-        private static StringComparer stringComparer = StringComparer.OrdinalIgnoreCase;
-        private static byte[] dataBuffer;
-        private static int readBytes;
-        private static bool comConnected = false;
+        private static StringComparer _stringComparer = StringComparer.OrdinalIgnoreCase;
+        private static byte[] _dataBuffer;
+        private static int _readBytes;
 
         private static void SetupComPort()
         {
@@ -31,7 +30,17 @@ namespace binaire
             _serialPort.ReadTimeout = 10000;
             _serialPort.WriteTimeout = 500;
 
-            dataBuffer = new byte[_serialPort.ReadBufferSize];
+            _dataBuffer = new byte[_serialPort.ReadBufferSize];
+        }
+
+        private static bool portReady()
+        {
+            if (_serialPort.IsOpen) { return true; }
+            else 
+            { 
+                Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info.");
+                return false;
+            }
         }
 
         public static void Run() {
@@ -48,24 +57,24 @@ namespace binaire
                 command = Console.ReadLine()?.Trim();
                 if (command == null) continue;
 
-                if (stringComparer.Equals("quit", command) ||
-                    stringComparer.Equals("exit", command) ||
-                    stringComparer.Equals("q", command))
+                if (_stringComparer.Equals("quit", command) ||
+                    _stringComparer.Equals("exit", command) ||
+                    _stringComparer.Equals("q", command))
                 {
                     _continue = false;
                 }
 
-                else if (stringComparer.Equals("help", command) || stringComparer.Equals("h", command))
+                else if (_stringComparer.Equals("help", command) || _stringComparer.Equals("h", command))
                 {
                     printHelp();
                 }
 
-                else if (stringComparer.Equals("c", command))
+                else if (_stringComparer.Equals("c", command))
                 {
                     CloseComPort();
                 }
 
-                else if (stringComparer.Equals("o", command))
+                else if (_stringComparer.Equals("o", command))
                 {
                     OpenComPort();
                 }
@@ -96,7 +105,7 @@ namespace binaire
                     }
                     catch (InvalidOperationException e)
                     {
-                        Console.WriteLine("Error: COM port is already open and cannot be set. Use c to close COM port.");
+                        Console.WriteLine("Error: COM port is already open and cannot be set. Use c to close COM port." + e.Message);
                     }
                     catch (Exception e)
                     {
@@ -104,29 +113,25 @@ namespace binaire
                     }
                 }
 
-                else if (stringComparer.Equals("r", command))
+                else if (_stringComparer.Equals("r", command))
                 {
-                    if (comConnected) { commandRead(); }
-                    else { Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info."); }
+                    if (portReady()) { commandRead(); }
                 }
 
-                else if (stringComparer.Equals("a", command))
+                else if (_stringComparer.Equals("auto", command))
                 {
-                    if (comConnected) { commandAuto(); }
-                    else { Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info."); }
+                    if (portReady()) { commandAuto(); }
                     
                 }
 
-                else if (stringComparer.Equals("s", command))
+                else if (_stringComparer.Equals("s", command))
                 {
-                    if (comConnected) { commandStore(); }
-                    else { Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info."); }
+                    if (portReady()) { commandStore(); }
                 }
 
                 else if (command.StartsWith("s ") && command.Length > 2)
                 {
-                    if (comConnected) { commandStore(command.Remove(0, 2)); }
-                    else { Console.WriteLine("COM port is closed. Use the o command to open it. Use help for more info."); }
+                    if (portReady()) { commandStore(command.Remove(0, 2)); }
                 }
 
                 else if (command.StartsWith("cb ") || command.StartsWith("ch "))
@@ -137,15 +142,26 @@ namespace binaire
                         Console.WriteLine($"Invalid command. Usage: {split[0]} <file1> <file2>");
                         continue;
                     }
-                    if (stringComparer.Equals("cb", split[0]))
+                    if (_stringComparer.Equals("cb", split[0]))
                     {
                         commandCompareBinary(split[1], split[2]);
                     }
-                    else if (stringComparer.Equals("ch", split[0]))
+                    else if (_stringComparer.Equals("ch", split[0]))
                     {
                         commandCompareHex(split[1], split[2]);
                     }
                 }
+                
+                else if (_stringComparer.Equals("flush", command))
+                {
+                    try
+                    {
+                        _serialPort.DiscardInBuffer();
+                        Console.WriteLine("Serial port flushed.");
+                    }
+                    catch (Exception ex) { Console.WriteLine(ex.Message); }
+                }
+
                 else
                 {
                     Console.WriteLine("Unknown command. Enter 'help' for usage information.");
@@ -172,15 +188,13 @@ namespace binaire
                 _serialPort.Open();
                 Console.WriteLine("");
                 Console.WriteLine("Opened port " + _serialPort.PortName + ". Type QUIT to exit binaire.");
-                comConnected = true;
             }
             catch (Exception)
             {
                 Console.WriteLine("");
                 Console.WriteLine("Failed to open port " + _serialPort.PortName + ". Is it already in use? Use command o to retry.");
-                comConnected = false;
             }
-            return comConnected;
+            return _serialPort.IsOpen;
         }
 
         // Public to provide access to COM port from outsite
@@ -188,15 +202,14 @@ namespace binaire
         {
             Console.WriteLine("Closing {0}.", _serialPort.PortName);
             _serialPort.Close();
-            comConnected = false;
         }
 
-        public static void Read()
+        public static void Read(SerialPort sp)
         {
-            readBytes = 0;
+            _readBytes = 0;
             try {
-                readBytes = _serialPort.Read(dataBuffer, 0, dataBuffer.Length);
-                if (readBytes > 0) Console.WriteLine(Encoding.UTF8.GetString(dataBuffer, 0, readBytes));
+                _readBytes = sp.Read(_dataBuffer, 0, _dataBuffer.Length);
+                if (_readBytes > 0) Console.WriteLine(Encoding.UTF8.GetString(_dataBuffer, 0, _readBytes));
             }
             catch (TimeoutException) {
                 Console.WriteLine("Timeout during read. Returning to binaire.");
@@ -206,18 +219,18 @@ namespace binaire
         private static void commandRead()
         {
             Console.WriteLine("Checking on " + _serialPort.PortName + " for data...");
-            Thread readThread = new Thread(() => { Read(); });
+            Thread readThread = new Thread(() => { Read(_serialPort); });
             readThread.Start();
             readThread.Join();
 
-            if (readBytes == 0)
+            if (_readBytes == 0)
             {
                 Console.WriteLine("There is no data available. Send data again and retry.");
             }
             else
             {
                 Console.WriteLine("==== end of data ====");
-                Console.WriteLine("{0} bytes were read in total.", readBytes);
+                Console.WriteLine("{0} bytes were read in total.", _readBytes);
                 try { decodePacket(); }
                 catch (Exception e) { Console.WriteLine("Error while decoding packet: {0}", e.ToString()); };
             }
@@ -230,7 +243,7 @@ namespace binaire
 
         private static void commandStore(string s)
         {
-            if (readBytes == 0)
+            if (_readBytes == 0)
             {
                 Console.WriteLine("No data is available. Use the r command first.");
                 return;
@@ -241,7 +254,7 @@ namespace binaire
                 Console.WriteLine("Storing file at " + fname);
                 using (var fs = new FileStream(fname, FileMode.Create, FileAccess.Write))
                 {
-                    fs.Write(dataBuffer, 0, readBytes);
+                    fs.Write(_dataBuffer, 0, _readBytes);
                 }
             }
             catch( Exception e)
@@ -251,6 +264,8 @@ namespace binaire
         }
 
 
+        // Automatic mode adds an EventHandler to the serial port. Any time data is received, autoDataReceivedAction() is 
+        // called. While in auto mode, no other commands can be issued.
         private static void commandAuto()
         {
             Console.WriteLine("Automatic mode activated. binaire will listen to the COM port for srampuf data packets.");
@@ -269,6 +284,10 @@ namespace binaire
             _serialPort.DataReceived -= autoDataReceivedAction;
         }
 
+
+        // Lazy method to wait for complete packets. Since only one COM port can be open at one time, no thought is
+        // spent on making this safe for multi-channel communication. Instead, the thread sleeps for a second to let
+        // all bytes of a packet arrive before attempting decoding.
         private static void autoDataReceivedAction(object sender, EventArgs args)
         {
             SerialPort port = (SerialPort)sender;
@@ -281,17 +300,12 @@ namespace binaire
 
             Thread.Sleep(1000);
 
-            readBytes = 0;
             try
             {
-                readBytes = port.Read(dataBuffer, 0, dataBuffer.Length);
-                if (readBytes > 0) Console.WriteLine(Encoding.UTF8.GetString(dataBuffer, 0, readBytes));
+                Read(port);
+                decodePacket();
             }
-            catch (TimeoutException)
-            {
-                Console.WriteLine("Timeout during read. Returning to binaire.");
-            }
-
+            catch (Exception e) { Console.WriteLine("Error while reading packet: {0}", e.ToString()); };
         }
 
 
@@ -300,43 +314,62 @@ namespace binaire
         private static void decodePacket()
         {
             const int minPacketSize = 40;
-            if (readBytes == 0) { throw new InvalidOperationException("There are no bytes to be read."); }
-            if (readBytes < minPacketSize) { throw new NotSupportedException("Too little bytes were received, could not decode package."); }
+            if (_readBytes == 0) { throw new InvalidOperationException("There are no bytes to be read."); }
+            if (_readBytes < minPacketSize) { throw new NotSupportedException("Too little bytes were received, could not decode package."); }
 
             byte[] magicNumber = { 0xE5, 0x55, 0x01, 0xEB };
 
             // Range notation buf[a..b] is used (C# 8.0 / .NET Core 3.0)
-            var rcvMagicNumber = dataBuffer[0..4];
+            var rcvMagicNumber = _dataBuffer[0..4];
             if (!magicNumber.SequenceEqual(rcvMagicNumber)) { throw new NotSupportedException("Invalid protocol start."); }
             Console.WriteLine("Packet received!");
 
-            var rcvBoardID = dataBuffer[4..16];
+            var rcvBoardID = _dataBuffer[4..16];
             int[] boardID = new int[Board.IdLength];
             Buffer.BlockCopy(rcvBoardID, 0, boardID, 0, rcvBoardID.Length);
 
-            var rcvBoardSpecifier = dataBuffer[16..20];
+            var rcvBoardSpecifier = _dataBuffer[16..20];
             int boardSpecifier = BitConverter.ToInt32(rcvBoardSpecifier);
 
-            var rcvStartAddress = dataBuffer[20..24];
+            var rcvStartAddress = _dataBuffer[20..24];
             int startAddress = BitConverter.ToInt32(rcvStartAddress);
 
-            var rcvEndAddress = dataBuffer[24..28];
+            var rcvEndAddress = _dataBuffer[24..28];
             int endAddress = BitConverter.ToInt32(rcvEndAddress);
 
-            var rcvTemperature = dataBuffer[28..32];
+            var rcvTemperature = _dataBuffer[28..32];
             int temperature = BitConverter.ToInt32(rcvTemperature);
             float tempF = ((float)temperature) / 1000;
 
             int pufSize = endAddress - startAddress;
             int pufOffset = 32 + pufSize;
-            var fingerprint = dataBuffer[32..pufOffset];
+            var fingerprint = _dataBuffer[32..pufOffset];
 
-            var zeroBytes = dataBuffer[pufOffset..(pufOffset+2)];
+            var zeroBytes = _dataBuffer[pufOffset..(pufOffset+2)];
             if (!zeroBytes.SequenceEqual(new byte[] { 0, 0 })) { throw new NotSupportedException("Invalid protocol end."); }
 
             Console.WriteLine("Packet seems fine!");
-            Board b = new Board(boardSpecifier, boardID[0], boardID[1], boardID[2], "NucleoF401RE");
-            Reading r = new Reading(b, startAddress, endAddress, tempF, fingerprint);
+
+            try
+            {
+                Board.BoardSpecifiers bs = (Board.BoardSpecifiers)boardSpecifier;
+                packetToDatabase(bs, boardID, startAddress, endAddress, tempF, fingerprint);
+            }
+            catch (Exception ex) { Console.WriteLine(ex.Message); }
+
+        }
+
+
+        private static void packetToDatabase(Board.BoardSpecifiers bs, int[] id, int pufStart, int pufEnd, float temp, byte[] fp)
+        {
+            if (fp == null) { throw new ArgumentException("fp must not be null."); }
+            if (id.Length != Board.IdLength) { throw new ArgumentException($"id must consist of {Board.IdLength} integers."); }
+            if (pufStart < 0) { throw new ArgumentException("pufStart must be positive."); }
+            if (pufEnd < 0) { throw new ArgumentException("pufEnd must be positive."); }
+            if (pufEnd <= pufStart) { throw new ArgumentException("pufEnd must be a larger address than pufStart."); }
+            if (temp <= -273.0 || temp > 250.0) { throw new ArgumentException("temperature is invalid."); }
+            Board b = Database.AddBoard(bs, id[0], id[1], id[2]);
+            Reading? r = Database.AddReading(b, pufStart, pufEnd, temp, fp);
             Console.WriteLine(r);
         }
 
@@ -374,7 +407,8 @@ namespace binaire
             Console.WriteLine("                 highlighted side by side.");
             Console.WriteLine("ch <f1> <f2>     Compare two files with hexadecimal formatting. Differences will be");
             Console.WriteLine("                 highlighted side by side.");
-            Console.WriteLine("a        Automatic mode. Shifts the program to go in a loop, waiting for data to be");
+            Console.WriteLine("flush            Flush the serial port's input buffer and discard all received data.");
+            Console.WriteLine("auto     Automatic mode. Shifts the program to go in a loop, waiting for data to be");
             Console.WriteLine("         received. Received data packets are automatically sent to the database. This");
             Console.WriteLine("         is meant to be used with the srampuf C project and smarttex database. EXPERIMENTAL.");
             Console.WriteLine("quit, q, exit    Exit binaire.");
