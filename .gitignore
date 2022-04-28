@@ -1,2 +1,6 @@
 
 .vs/*
+*.dll
+*.pdb
+*.cache
+binaire/obj/*
