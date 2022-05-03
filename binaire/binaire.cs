@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO.Ports;
+using System.Numerics;
 
 namespace binaire
 {
@@ -17,6 +18,7 @@ namespace binaire
         private static StringComparer _stringComparer = StringComparer.OrdinalIgnoreCase;
         private static byte[] _dataBuffer;
         private static int _readBytes;
+        private static bool _localMode = false;
 
         private static void SetupComPort()
         {
@@ -134,6 +136,7 @@ namespace binaire
                     if (portReady()) { commandStore(command.Remove(0, 2)); }
                 }
 
+                // COmpare hex / compare binary of two input files
                 else if (command.StartsWith("cb ") || command.StartsWith("ch "))
                 {
                     string[] split = command.Split(' ');
@@ -161,6 +164,81 @@ namespace binaire
                     }
                     catch (Exception ex) { Console.WriteLine(ex.Message); }
                 }
+
+                // Activate/Deactivate local mode. Local mode doesn't send to database, default is enabled.
+                else if (_stringComparer.Equals("local", command))
+                {
+                    if (_localMode)
+                    {
+                        _localMode = false;
+                        Console.WriteLine("Local mode disabled - packets will be stored in database.");
+                    }
+                    else
+                    {
+                        _localMode = true;
+                        Console.WriteLine("Local mode enabled - packets will not be stored in database.");
+                    }
+                }
+
+                // Save byte[] to image - not fully integrated, you have to adapt the source code to
+                // whatever bytes you want to save.
+                else if (_stringComparer.Equals("i", command))
+                {
+                    byte[] b = { 0, 0, 0x11, 0x23, 0xAA, 0xFF, 0xFF, 0xFF };
+
+                    //try
+                    //{
+                    //    string fname = "imagetest.bin";
+                    //    Console.WriteLine("Storing file at " + fname);
+                    //    using (var fs = new FileStream(fname, FileMode.Create, FileAccess.Write))
+                    //    {
+                    //        fs.Write(b, 0, b.Length);
+                    //    }
+                    //}
+                    //catch (Exception e)
+                    //{
+                    //    Console.WriteLine("Store command failed. Exception: {0}", e);
+                    //}
+
+                    Reading fp1 = Database.GetReadingByID(22);
+                    Reading fp2 = Database.GetReadingByID(26);
+                    byte[] xor = new byte[fp1.Fingerprint.Length];
+                    for (int i = 0; i < fp1.Fingerprint.Length; i++)
+                    {
+                        xor[i] = (byte)(fp1.Fingerprint[i] ^ fp2.Fingerprint[i]);
+                    }
+
+                    //BinaryToImage.Write(b, 16, 4, "imagetest.png");
+                    BinaryToImage.Write(fp1.Fingerprint, 32, 64, "fp1.png");
+                    BinaryToImage.Write(fp2.Fingerprint, 32, 64, "fp2.png");
+                    BinaryToImage.Write(xor, 32, 64, "xor.png");
+                }
+
+                
+                else if (command.StartsWith("i ") && command.Length > 2)
+                {
+                    string inputfile = command.Remove(0, 2);
+
+                    System.IO.FileInfo? fi = null;
+                    try
+                    {
+                        fi = new System.IO.FileInfo(inputfile);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("{0 is not a valid path. {1}", inputfile, e.Message);
+                        return;
+                    }
+
+                    if (!fi.Exists)
+                    {
+                        Console.WriteLine("{0} does not exist.", Path.GetFullPath(inputfile));
+                        continue;
+                    }
+
+
+                }
+
 
                 else
                 {
@@ -231,8 +309,11 @@ namespace binaire
             {
                 Console.WriteLine("==== end of data ====");
                 Console.WriteLine("{0} bytes were read in total.", _readBytes);
-                try { decodePacket(); }
-                catch (Exception e) { Console.WriteLine("Error while decoding packet: {0}", e.ToString()); };
+                if (!_localMode)
+                {
+                    try { decodePacket(); }
+                    catch (Exception e) { Console.WriteLine("Error while decoding packet: {0}", e.ToString()); };
+                }
             }
         }
 
@@ -303,7 +384,7 @@ namespace binaire
             try
             {
                 Read(port);
-                decodePacket();
+                if (!_localMode) { decodePacket(); }
             }
             catch (Exception e) { Console.WriteLine("Error while reading packet: {0}", e.ToString()); };
         }
@@ -408,9 +489,12 @@ namespace binaire
             Console.WriteLine("ch <f1> <f2>     Compare two files with hexadecimal formatting. Differences will be");
             Console.WriteLine("                 highlighted side by side.");
             Console.WriteLine("flush            Flush the serial port's input buffer and discard all received data.");
+            Console.WriteLine("local            Turns local mode on/off. In local mode, received packets are not stored");
+            Console.WriteLine("                 in database, instead they can be normally saved with the s command.");
             Console.WriteLine("auto     Automatic mode. Shifts the program to go in a loop, waiting for data to be");
             Console.WriteLine("         received. Received data packets are automatically sent to the database. This");
-            Console.WriteLine("         is meant to be used with the srampuf C project and smarttex database. EXPERIMENTAL.");
+            Console.WriteLine("         is meant to be used with the srampuf C project and smarttex database.");
+            Console.WriteLine("i        Write byte array to black & white image (adapt source code).");
             Console.WriteLine("quit, q, exit    Exit binaire.");
         }
     }

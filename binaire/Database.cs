@@ -74,5 +74,13 @@ namespace binaire
                 return b;
             }
         }
+
+        public static Reading? GetReadingByID(int id)
+        {
+            using (var ctx = new binaireDbContext())
+            {
+                return ctx.Readings.Where(p => p.ReadingId == id).FirstOrDefault();
+            }
+        }
     }
 }
