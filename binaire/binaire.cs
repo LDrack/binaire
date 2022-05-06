@@ -23,8 +23,8 @@ namespace binaire
         private static void SetupComPort()
         {
             // Default com port can be set here, usually 12 or 7 is good. Otherwise, use the o command to set.
-            _serialPort = new SerialPort("COM12", 115200, Parity.None, 8, StopBits.One);
-            //_serialPort = new SerialPort("COM7", 115200, Parity.None, 8, StopBits.One);
+            //_serialPort = new SerialPort("COM12", 115200, Parity.None, 8, StopBits.One);
+            _serialPort = new SerialPort("COM7", 115200, Parity.None, 8, StopBits.One);
             _serialPort.Handshake = Handshake.None;
             _serialPort.ReadBufferSize = 5120; // reserve 5kB max Buffer for incoming serial data
 
@@ -186,20 +186,6 @@ namespace binaire
                 {
                     byte[] b = { 0, 0, 0x11, 0x23, 0xAA, 0xFF, 0xFF, 0xFF };
 
-                    //try
-                    //{
-                    //    string fname = "imagetest.bin";
-                    //    Console.WriteLine("Storing file at " + fname);
-                    //    using (var fs = new FileStream(fname, FileMode.Create, FileAccess.Write))
-                    //    {
-                    //        fs.Write(b, 0, b.Length);
-                    //    }
-                    //}
-                    //catch (Exception e)
-                    //{
-                    //    Console.WriteLine("Store command failed. Exception: {0}", e);
-                    //}
-
                     Reading fp1 = Database.GetReadingByID(22);
                     Reading fp2 = Database.GetReadingByID(26);
                     byte[] xor = new byte[fp1.Fingerprint.Length];
@@ -209,9 +195,12 @@ namespace binaire
                     }
 
                     //BinaryToImage.Write(b, 16, 4, "imagetest.png");
-                    BinaryToImage.Write(fp1.Fingerprint, 32, 64, "fp1.png");
-                    BinaryToImage.Write(fp2.Fingerprint, 32, 64, "fp2.png");
-                    BinaryToImage.Write(xor, 32, 64, "xor.png");
+                    //BinaryToImage.SaveBitImage(fp1.Fingerprint, 32, 64, "fp1.pdf");
+                    //BinaryToImage.SaveBitImage(fp2.Fingerprint, 32, 64, "fp2.pdf");
+                    //BinaryToImage.SaveBitImage(xor, 32, 64, "xor.pdf");
+
+                    int[] heatmap = { 0, 0, 0, 10, 9, 5, 3, 1, 0 };
+                    BinaryToImage.SaveHeatmapImage(heatmap, 10, 3, 3, "heatmap.png");
                 }
 
                 

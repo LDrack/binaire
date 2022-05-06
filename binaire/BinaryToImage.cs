@@ -1,9 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
+//using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VectSharp;
+using VectSharp.PDF;
+using VectSharp.SVG;
+using VectSharp.Raster;
+
 
 namespace binaire
 {
@@ -12,54 +17,78 @@ namespace binaire
     // create black pixels and 1s create white pixels.
     public static class BinaryToImage
     {
+        private static bool IsValidPath(string path)
+        {
+            try
+            {
+                string fullPath = Path.GetFullPath(path);
+            }
+            catch (Exception ex) { return false; }
+
+            return true;
+        }
+
+        private static bool IsValidExtension(string ext)
+        {
+            if (ext == ".pdf" || ext == ".png" || ext == ".svg") { return true; }
+            else { return false; }
+        }
+
+
         // Generate black and white image. 1 byte = 8 pixels, written from left to right.
         // b.Length*8 must equal width*height!
-        public static void Write(byte[] b, int width, int height, string fname)
+        public static void SaveBitImage(byte[] b, int width, int height, string fname)
         {
             if (b == null) { throw new ArgumentNullException("b must not be null."); }
             if (width <= 0 || height <= 0) { throw new ArgumentException("width and height must be positive integers."); }
             if (b.Length * 8 != width * height) { throw new ArgumentException("b.Length*8 must equal width*height."); }
-            string filename = Path.HasExtension(fname) ? fname : fname + ".png";
 
-            System.IO.FileInfo? fi = null;
-            try
-            {
-                fi = new System.IO.FileInfo(filename);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("{0 is not a valid path. {1}", filename, e.Message);
-                return;
-            }
+            string ext = Path.GetExtension(fname);
+            if (!IsValidExtension(ext)) { throw new ArgumentException("Invalid filename. Must end with .pdf, .svg or .png"); }
+            if (!IsValidPath(fname)) { throw new ArgumentException($"{fname} is not a valid path."); }
 
-            if (fi.Exists)
-            {
-                string? input = "";
-                while (input.StartsWith("y") || input.StartsWith("n"))
-                {
-                    Console.WriteLine("{0} already exists. Save anyways? Enter y or n.", Path.GetFullPath(filename));
-                    input = Console.ReadLine();
-                }
-                if (input == "n")
-                {
-                    Console.WriteLine("Alright. The image won't be saved.");
-                    return;
-                }
-            }
+            Document doc = new Document();
+            doc.Pages.Add(new Page(width, height));
+            Graphics g = doc.Pages.Last().Graphics;
+            FillGraphicsBlackAndWhite(g, b, width, height);
 
+            if      (ext == ".pdf") { doc.SaveAsPDF(fname); }
+            else if (ext == ".svg") { doc.Pages.Last().SaveAsSVG(fname); }
+            else if (ext == ".png") { doc.Pages.Last().SaveAsPNG(fname); }
+            else { throw new NotImplementedException(); }
 
-            Bitmap bmp = GetBinaryBitmap(b, width, height);
-            bmp.Save(filename, System.Drawing.Imaging.ImageFormat.Png);
-            bmp.Dispose();
-
-            Console.WriteLine("File saved.");
+            Console.WriteLine($"File saved as {fname}.");
 
         }
 
-        private static Bitmap GetBinaryBitmap(byte[] b, int width, int height)
+        public static void SaveHeatmapImage(int[] countArray, int nReadings, int width, int height, string fname)
         {
-            Bitmap bmp = new Bitmap(width, height);
-            Graphics g = Graphics.FromImage(bmp);
+            if (countArray == null) { throw new ArgumentNullException("countArray must not be null."); }
+            if (nReadings < 1) { throw new ArgumentException("nReadings must be at least 1."); }
+            if (width <= 0 || height <= 0) { throw new ArgumentException("width and height must be positive integers."); }
+            if (countArray.Length != width * height) { throw new ArgumentException("countArray.Length must equal width*height."); }
+            if (countArray.Max() > nReadings) { throw new ArgumentException("countArray contains a number bigger than nReadings."); }
+
+
+            string ext = Path.GetExtension(fname);
+            if (!IsValidExtension(ext)) { throw new ArgumentException("Invalid filename. Must end with .pdf, .svg or .png"); }
+            if (!IsValidPath(fname)) { throw new ArgumentException($"{fname} is not a valid path."); }
+
+            Document doc = new Document();
+            doc.Pages.Add(new Page(width, height));
+            Graphics g = doc.Pages.Last().Graphics;
+            FillGraphicsHeatmap(g, countArray, nReadings, width, height);
+
+            if      (ext == ".pdf") { doc.SaveAsPDF(fname); }
+            else if (ext == ".svg") { doc.Pages.Last().SaveAsSVG(fname); }
+            else if (ext == ".png") { doc.Pages.Last().SaveAsPNG(fname); }
+            else { throw new NotImplementedException(); }
+
+            Console.WriteLine($"File saved as {fname}.");
+        }
+
+        private static void FillGraphicsBlackAndWhite(Graphics g, byte[] b, int width, int height)
+        {
             int bitIndex = 0;
             int byteIndex = 0;
 
@@ -69,16 +98,37 @@ namespace binaire
                 {
                     // Bit is 0: black brush
                     // Bit is 1: white brush
-                    Brush brush = (b[byteIndex] & (1 << (7 - bitIndex))) != 0 ? Brushes.White : Brushes.Black;
-                    
-                    g.FillRectangle(brush, j, i, 1, 1);
+                    Colour brush = (b[byteIndex] & (1 << (7 - bitIndex))) != 0 ? Colours.White : Colours.Black;
+
+                    g.FillRectangle(j, i, 1, 1, brush);
                     if (bitIndex == 7) { byteIndex++; }
                     bitIndex = (bitIndex + 1) % 8;
                 }
             }
+        }
 
-            g.Dispose();
-            return bmp;
+        private static void FillGraphicsHeatmap(Graphics g, int[] data, int nReadings, int width, int height)
+        {
+            if (nReadings < 1) { throw new ArgumentException("nReadings must be at least 1."); }
+
+            const float maxColorValue = 255f;
+            int dataIdx = 0;
+
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    // Bit is always 0: black brush
+                    // Bit is always 1: white brush
+                    // Bit is inbetween: shade of gray
+                    float percentage = (float)data[dataIdx] / (float)nReadings;
+                    int colorValue = (int)(percentage * maxColorValue);
+                    Colour brush = Colour.FromRgb(colorValue, colorValue, colorValue);
+
+                    g.FillRectangle(j, i, 1, 1, brush);
+                    dataIdx++;
+                }
+            }
         }
     }
 }

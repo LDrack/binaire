@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace binaire
 {
@@ -9,7 +10,17 @@ namespace binaire
             // MySQL
             protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
             {
-                var connectionString = @"server=smarttexserver.projekte.fh-hagenberg.at;database=DEPS_SRAM;uid=spectre;pwd=!Q@DLe6FaD7w%;";
+                // Username and password are read from appsettings.json
+                // https://www.learnentityframeworkcore5.com/connection-strings-entity-framework-core
+                var newbuilder = new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json");
+
+                IConfiguration iconfig = new ConfigurationBuilder()
+                    .AddJsonFile("appsettings.json", true, true)
+                    .Build();
+
+                var connectionString = iconfig.GetConnectionString("MyConnection");
                 var serverVersion = new MySqlServerVersion(new Version(8, 0, 28));
                 optionsBuilder.UseMySql(connectionString, serverVersion);
             }
