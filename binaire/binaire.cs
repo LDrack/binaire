@@ -20,6 +20,8 @@ namespace binaire
         private static int _readBytes;
         private static bool _localMode = false;
 
+        private const int _minPacketSize = 40;
+
         private static void SetupComPort()
         {
             // Default com port can be set here, usually 12 or 7 is good. Otherwise, use the o command to set.
@@ -123,7 +125,6 @@ namespace binaire
                 else if (_stringComparer.Equals("auto", command))
                 {
                     if (portReady()) { commandAuto(); }
-                    
                 }
 
                 else if (_stringComparer.Equals("s", command))
@@ -157,27 +158,13 @@ namespace binaire
                 
                 else if (_stringComparer.Equals("flush", command))
                 {
-                    try
-                    {
-                        _serialPort.DiscardInBuffer();
-                        Console.WriteLine("Serial port flushed.");
-                    }
-                    catch (Exception ex) { Console.WriteLine(ex.Message); }
+                    commandFlush();
                 }
 
                 // Activate/Deactivate local mode. Local mode doesn't send to database, default is enabled.
                 else if (_stringComparer.Equals("local", command))
                 {
-                    if (_localMode)
-                    {
-                        _localMode = false;
-                        Console.WriteLine("Local mode disabled - packets will be stored in database.");
-                    }
-                    else
-                    {
-                        _localMode = true;
-                        Console.WriteLine("Local mode enabled - packets will not be stored in database.");
-                    }
+                    commandLocal();
                 }
 
                 // Save byte[] to image - not fully integrated, you have to adapt the source code to
@@ -203,30 +190,99 @@ namespace binaire
                     BinaryToImage.SaveHeatmapImage(heatmap, 10, 3, 3, "heatmap.png");
                 }
 
-                
-                else if (command.StartsWith("i ") && command.Length > 2)
+                else if (_stringComparer.Equals("work", command))
                 {
-                    string inputfile = command.Remove(0, 2);
+                    using (var ctx = new Database.binaireDbContext())
+                    {
+                        var m1 = ctx.Readings.Where(p => p.ReadingId >= 71
+                                                      && p.ReadingId <= 105).ToList();
+                        var m2 = ctx.Readings.Where(p => p.ReadingId >= 106
+                                                      && p.ReadingId <= 140).ToList();
+                        var m3 = ctx.Readings.Where(p => p.ReadingId >= 141
+                                                      && p.ReadingId <= 175).ToList();
+                        var m4 = ctx.Readings.Where(p => p.ReadingId >= 176
+                                                      && p.ReadingId <= 210).ToList();
+                        var m5 = ctx.Readings.Where(p => p.ReadingId >= 211
+                                                      && p.ReadingId <= 245).ToList();
 
-                    System.IO.FileInfo? fi = null;
-                    try
-                    {
-                        fi = new System.IO.FileInfo(inputfile);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("{0 is not a valid path. {1}", inputfile, e.Message);
-                        return;
-                    }
-
-                    if (!fi.Exists)
-                    {
-                        Console.WriteLine("{0} does not exist.", Path.GetFullPath(inputfile));
-                        continue;
+                        const int n = 35;
+                        double[] FHD = new double[n];
+                        double[] interFHD = new double[n];
+                        Console.WriteLine("===== Intra FHD m1 vs m2");
+                        for (int i = 0; i < n; i++)
+                        {
+                            FHD[i] = HexComp.calcFHD(HexComp.calcHD(m1[i].Fingerprint, m2[i].Fingerprint), 2048);
+                            Console.WriteLine("FHD #{0} = {1}", i, FHD[i]);
+                        }
+                        Console.WriteLine("===== Intra FHD m1 vs m5");
+                        for (int i = 0; i < n; i++)
+                        {
+                            FHD[i] = HexComp.calcFHD(HexComp.calcHD(m1[i].Fingerprint, m5[i].Fingerprint), 2048);
+                            Console.WriteLine("FHD #{0} = {1}", i, FHD[i]);
+                        }
+                        //Console.WriteLine("===== Inter FHD m1 vs m1");
+                        //for (int i = 0; i < n; i++)
+                        //{
+                        //    interFHD[i] = HexComp.calcFHD(HexComp.calcHD(m1[i].Fingerprint, m1[(i+1)%n].Fingerprint), 2048);
+                        //    Console.WriteLine("interFHD #{0} = {1}", i, interFHD[i]);
+                        //}
+                        //Console.WriteLine("===== Inter FHD m1 vs m5");
+                        //for (int i = 0; i < n; i++)
+                        //{
+                        //    interFHD[i] = HexComp.calcFHD(HexComp.calcHD(m1[i].Fingerprint, m5[(i + 1) % n].Fingerprint), 2048);
+                        //    Console.WriteLine("interFHD #{0} = {1}", i, interFHD[i]);
+                        //}
+                        Console.WriteLine("===== Intra FHD m3 and m4");
+                        for (int i = 0; i < n; i++)
+                        {
+                            FHD[i] = HexComp.calcFHD(HexComp.calcHD(m3[i].Fingerprint, m4[i].Fingerprint), 2048);
+                            Console.WriteLine("FHD #{0} = {1}", i, FHD[i]);
+                        }
+                        //for (int i = 0; i < n; i++)
+                        //{
+                        //    Console.WriteLine("#### Bias m1 = {0}", HexComp.calcBias(m1[i].Fingerprint));
+                        //}
+                        //for (int i = 0; i < n; i++)
+                        //{
+                        //    Console.WriteLine("#### Bias m2 = {0}", HexComp.calcBias(m2[i].Fingerprint));
+                        //}
+                        //for (int i = 0; i < n; i++)
+                        //{
+                        //    Console.WriteLine("#### Bias m3 = {0}", HexComp.calcBias(m3[i].Fingerprint));
+                        //}
+                        //for (int i = 0; i < n; i++)
+                        //{
+                        //    Console.WriteLine("#### Bias m4 = {0}", HexComp.calcBias(m4[i].Fingerprint));
+                        //}
                     }
 
 
                 }
+
+
+                //else if (command.StartsWith("i ") && command.Length > 2)
+                //{
+                //    string inputfile = command.Remove(0, 2);
+
+                //    System.IO.FileInfo? fi = null;
+                //    try
+                //    {
+                //        fi = new System.IO.FileInfo(inputfile);
+                //    }
+                //    catch (Exception e)
+                //    {
+                //        Console.WriteLine("{0 is not a valid path. {1}", inputfile, e.Message);
+                //        return;
+                //    }
+
+                //    if (!fi.Exists)
+                //    {
+                //        Console.WriteLine("{0} does not exist.", Path.GetFullPath(inputfile));
+                //        continue;
+                //    }
+
+
+                //}
 
 
                 else
@@ -271,22 +327,23 @@ namespace binaire
             _serialPort.Close();
         }
 
-        public static void Read(SerialPort sp)
+        public static int Read(SerialPort sp, bool printData)
         {
             _readBytes = 0;
             try {
                 _readBytes = sp.Read(_dataBuffer, 0, _dataBuffer.Length);
-                if (_readBytes > 0) Console.WriteLine(Encoding.UTF8.GetString(_dataBuffer, 0, _readBytes));
+                if (_readBytes > 0 && printData) Console.WriteLine(Encoding.UTF8.GetString(_dataBuffer, 0, _readBytes));
             }
             catch (TimeoutException) {
                 Console.WriteLine("Timeout during read. Returning to binaire.");
             }
+            return _readBytes;
         }
 
         private static void commandRead()
         {
             Console.WriteLine("Checking on " + _serialPort.PortName + " for data...");
-            Thread readThread = new Thread(() => { Read(_serialPort); });
+            Thread readThread = new Thread(() => { Read(_serialPort, true); });
             readThread.Start();
             readThread.Join();
 
@@ -333,6 +390,29 @@ namespace binaire
             }
         }
 
+        private static void commandFlush()
+        {
+            try
+            {
+                _serialPort.DiscardInBuffer();
+                Console.WriteLine("Serial port flushed.");
+            }
+            catch (Exception ex) { Console.WriteLine(ex.Message); }
+        }
+
+        private static void commandLocal()
+        {
+            if (_localMode)
+            {
+                _localMode = false;
+                Console.WriteLine("Local mode disabled - packets will be stored in database.");
+            }
+            else
+            {
+                _localMode = true;
+                Console.WriteLine("Local mode enabled - packets will not be stored in database.");
+            }
+        }
 
         // Automatic mode adds an EventHandler to the serial port. Any time data is received, autoDataReceivedAction() is 
         // called. While in auto mode, no other commands can be issued.
@@ -366,14 +446,14 @@ namespace binaire
 
             Console.WriteLine("Data received! {0} bytes are available.", port.BytesToRead);
             Console.WriteLine("Let's wait 1000 ms...");
-            Console.WriteLine("{0} bytes are now available. Reading packet...", port.BytesToRead);
-
             Thread.Sleep(1000);
+            Console.WriteLine("{0} bytes are now available. Reading packet...", port.BytesToRead);
 
             try
             {
-                Read(port);
-                if (!_localMode) { decodePacket(); }
+                Read(port, false);
+                if (_localMode) { isPacketOk(); }
+                else { decodePacket(); }
             }
             catch (Exception e) { Console.WriteLine("Error while reading packet: {0}", e.ToString()); };
         }
@@ -383,9 +463,8 @@ namespace binaire
         // Subsequently, the decoded packet is used to instantiate a Reading, holding all relevant data.
         private static void decodePacket()
         {
-            const int minPacketSize = 40;
             if (_readBytes == 0) { throw new InvalidOperationException("There are no bytes to be read."); }
-            if (_readBytes < minPacketSize) { throw new NotSupportedException("Too little bytes were received, could not decode package."); }
+            if (_readBytes < _minPacketSize) { throw new NotSupportedException("Too little bytes were received, could not decode package."); }
 
             byte[] magicNumber = { 0xE5, 0x55, 0x01, 0xEB };
 
@@ -427,6 +506,35 @@ namespace binaire
             }
             catch (Exception ex) { Console.WriteLine(ex.Message); }
 
+        }
+
+        private static bool isPacketOk()
+        {
+            if (_readBytes == 0) { Console.WriteLine("Packet not ok: There are no bytes to be read."); return false; }
+            if (_readBytes < _minPacketSize) { Console.WriteLine("Packet not ok: Too little bytes were received, could not decode package."); return false; }
+
+            byte[] magicNumber = { 0xE5, 0x55, 0x01, 0xEB };
+
+            // Range notation buf[a..b] is used (C# 8.0 / .NET Core 3.0)
+            var rcvMagicNumber = _dataBuffer[0..4];
+            if (!magicNumber.SequenceEqual(rcvMagicNumber)) { Console.WriteLine("Packet not ok: Invalid protocol start."); return false; }
+            Console.WriteLine("Packet received!");
+
+            var rcvStartAddress = _dataBuffer[20..24];
+            int startAddress = BitConverter.ToInt32(rcvStartAddress);
+
+            var rcvEndAddress = _dataBuffer[24..28];
+            int endAddress = BitConverter.ToInt32(rcvEndAddress);
+
+            int pufSize = endAddress - startAddress;
+            int pufOffset = 32 + pufSize;
+            var fingerprint = _dataBuffer[32..pufOffset];
+
+            var zeroBytes = _dataBuffer[pufOffset..(pufOffset + 2)];
+            if (!zeroBytes.SequenceEqual(new byte[] { 0, 0 })) { Console.WriteLine("Packet not ok: Invalid protocol end."); return false; }
+
+            Console.WriteLine("Packet seems fine!");
+            return true;
         }
 
 

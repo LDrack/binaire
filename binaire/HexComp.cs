@@ -74,7 +74,7 @@ namespace binaire
             Console.WriteLine("\nPrinted {0} bytes in total.", index);
         }
 
-        private static int calcHD(byte[] b1, byte[] b2)
+        public static int calcHD(byte[] b1, byte[] b2)
         {
             int hd = 0;
             for (int i = 0; i < Math.Min(b1.Length, b2.Length); i++)
@@ -84,11 +84,21 @@ namespace binaire
             return hd;
         }
 
-        private static double calcFHD(int hd, int length)
+        public static double calcFHD(int hd, int length)
         {
             // Length is given in bytes (filesize), so *8 is needed to count the bits
             if (hd <= 0 || length <= 0 || length*8 < hd) return 0.0;
             return (double)hd / (double)(length*8);
+        }
+
+        public static double calcBias(byte[] b)
+        {
+            int bitsSet = 0;
+            for (int i = 0; i < b.Length; i++)
+            {
+                bitsSet += System.Numerics.BitOperations.PopCount((uint)(b[i]));
+            }
+            return (double)bitsSet / (double)(b.Length * 8);
         }
     }
 
