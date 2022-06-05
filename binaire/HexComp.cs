@@ -84,6 +84,17 @@ namespace binaire
             return hd;
         }
 
+        public static double calcFHD(byte[] b1, byte[] b2)
+        {
+            int hd = 0;
+            int shortestLength = Math.Min(b1.Length, b2.Length);
+            for (int i = 0; i < shortestLength; i++)
+            {
+                hd += System.Numerics.BitOperations.PopCount((uint)(b1[i] ^ b2[i]));
+            }
+            return (double)hd / (double)(shortestLength * 8);
+        }
+
         public static double calcFHD(int hd, int length)
         {
             // Length is given in bytes (filesize), so *8 is needed to count the bits

@@ -2,13 +2,10 @@
   ////  Lucas Drack
     //  2022-04-24
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO.Ports;
-using System.Numerics;
+using CsvHelper;
+using System.Diagnostics;
 
 namespace binaire
 {
@@ -50,7 +47,7 @@ namespace binaire
         public static void Run() {
             printProgramHeader();
             SetupComPort();
-            if (!OpenComPort()) {
+            if (!OpenComPort(true)) {
                 //return;     // Exit if COM port is blocked
             }
 
@@ -80,7 +77,7 @@ namespace binaire
 
                 else if (_stringComparer.Equals("o", command))
                 {
-                    OpenComPort();
+                    OpenComPort(true);
                 }
 
                 else if (command.StartsWith("o "))
@@ -96,7 +93,7 @@ namespace binaire
                         if (SerialPort.GetPortNames().ToList().Contains(split[1]))
                         {
                             _serialPort.PortName = split[1];
-                            OpenComPort();
+                            OpenComPort(true);
                         }
                         else
                         {
@@ -192,101 +189,48 @@ namespace binaire
 
                 else if (_stringComparer.Equals("work", command))
                 {
-                    using (var ctx = new Database.binaireDbContext())
-                    {
-                        var m1 = ctx.Readings.Where(p => p.ReadingId >= 71
-                                                      && p.ReadingId <= 105).ToList();
-                        var m2 = ctx.Readings.Where(p => p.ReadingId >= 106
-                                                      && p.ReadingId <= 140).ToList();
-                        var m3 = ctx.Readings.Where(p => p.ReadingId >= 141
-                                                      && p.ReadingId <= 175).ToList();
-                        var m4 = ctx.Readings.Where(p => p.ReadingId >= 176
-                                                      && p.ReadingId <= 210).ToList();
-                        var m5 = ctx.Readings.Where(p => p.ReadingId >= 211
-                                                      && p.ReadingId <= 245).ToList();
+                    //using (var ctx = new Database.binaireDbContext())
+                    //{
+                    //    const int pufsPerDevice = 35;
+                    //    int address = 0x20005000;
+                    //    const int pufSize = 0x800;
 
-                        const int n = 35;
-                        double[] FHD = new double[n];
-                        double[] interFHD = new double[n];
-                        Console.WriteLine("===== Intra FHD m1 vs m2");
-                        for (int i = 0; i < n; i++)
-                        {
-                            FHD[i] = HexComp.calcFHD(HexComp.calcHD(m1[i].Fingerprint, m2[i].Fingerprint), 2048);
-                            Console.WriteLine("FHD #{0} = {1}", i, FHD[i]);
-                        }
-                        Console.WriteLine("===== Intra FHD m1 vs m5");
-                        for (int i = 0; i < n; i++)
-                        {
-                            FHD[i] = HexComp.calcFHD(HexComp.calcHD(m1[i].Fingerprint, m5[i].Fingerprint), 2048);
-                            Console.WriteLine("FHD #{0} = {1}", i, FHD[i]);
-                        }
-                        //Console.WriteLine("===== Inter FHD m1 vs m1");
-                        //for (int i = 0; i < n; i++)
-                        //{
-                        //    interFHD[i] = HexComp.calcFHD(HexComp.calcHD(m1[i].Fingerprint, m1[(i+1)%n].Fingerprint), 2048);
-                        //    Console.WriteLine("interFHD #{0} = {1}", i, interFHD[i]);
-                        //}
-                        //Console.WriteLine("===== Inter FHD m1 vs m5");
-                        //for (int i = 0; i < n; i++)
-                        //{
-                        //    interFHD[i] = HexComp.calcFHD(HexComp.calcHD(m1[i].Fingerprint, m5[(i + 1) % n].Fingerprint), 2048);
-                        //    Console.WriteLine("interFHD #{0} = {1}", i, interFHD[i]);
-                        //}
-                        Console.WriteLine("===== Intra FHD m3 and m4");
-                        for (int i = 0; i < n; i++)
-                        {
-                            FHD[i] = HexComp.calcFHD(HexComp.calcHD(m3[i].Fingerprint, m4[i].Fingerprint), 2048);
-                            Console.WriteLine("FHD #{0} = {1}", i, FHD[i]);
-                        }
-                        //for (int i = 0; i < n; i++)
-                        //{
-                        //    Console.WriteLine("#### Bias m1 = {0}", HexComp.calcBias(m1[i].Fingerprint));
-                        //}
-                        //for (int i = 0; i < n; i++)
-                        //{
-                        //    Console.WriteLine("#### Bias m2 = {0}", HexComp.calcBias(m2[i].Fingerprint));
-                        //}
-                        //for (int i = 0; i < n; i++)
-                        //{
-                        //    Console.WriteLine("#### Bias m3 = {0}", HexComp.calcBias(m3[i].Fingerprint));
-                        //}
-                        //for (int i = 0; i < n; i++)
-                        //{
-                        //    Console.WriteLine("#### Bias m4 = {0}", HexComp.calcBias(m4[i].Fingerprint));
-                        //}
-                    }
+                    //    List<List<Reading>> readingsFromB4 = multiPufQuery(4, pufsPerDevice, 0x20005000, 0x800);
+
+                    //    int[] bitcountFirstEntryFromFirstPuf = getFpCount(readingsFromB4[0]);
+                    //    BinaryToImage.SaveHeatmapImage(bitcountFirstEntryFromFirstPuf, readingsFromB4[0].Count, 256, 64, "heatmapTest.png");
 
 
+                    //    const int n = 35;
+                    //    double[] FHD = new double[n];
+                    //    double[] interFHD = new double[n];
+
+
+
+
+                    //    //ExportData.ExportCsv(m1, "messreihe1.csv");
+                    //}
+
+                    //try { evaluation1(); }
+                    //catch (Exception ex) { Console.WriteLine(ex.Message); }
+
+                    //try { evaluation2(); }
+                    //catch (Exception ex) { Console.WriteLine(ex.Message); }
+
+                    saveFuzzyExtractorData(4, 50);
+
+                    Console.WriteLine("Done.");
+                }
+
+                else if (_stringComparer.Equals("test", command))
+                {
+                    commandTest();
                 }
 
 
-                //else if (command.StartsWith("i ") && command.Length > 2)
-                //{
-                //    string inputfile = command.Remove(0, 2);
-
-                //    System.IO.FileInfo? fi = null;
-                //    try
-                //    {
-                //        fi = new System.IO.FileInfo(inputfile);
-                //    }
-                //    catch (Exception e)
-                //    {
-                //        Console.WriteLine("{0 is not a valid path. {1}", inputfile, e.Message);
-                //        return;
-                //    }
-
-                //    if (!fi.Exists)
-                //    {
-                //        Console.WriteLine("{0} does not exist.", Path.GetFullPath(inputfile));
-                //        continue;
-                //    }
-
-
-                //}
-
 
                 else
-                {
+                        {
                     Console.WriteLine("Unknown command. Enter 'help' for usage information.");
                 }
             }
@@ -304,18 +248,23 @@ namespace binaire
             HexComp.compareBin(f1, f2);
         }
 
-        private static bool OpenComPort()
+        private static bool OpenComPort(bool print)
         {
             try
             {
                 _serialPort.Open();
-                Console.WriteLine("");
-                Console.WriteLine("Opened port " + _serialPort.PortName + ". Type QUIT to exit binaire.");
+                if (print)
+                {
+                    Console.WriteLine("");
+                    Console.WriteLine("Opened port " + _serialPort.PortName + ". Type QUIT to exit binaire.");
+                }
             }
             catch (Exception)
             {
+                if (print) {
                 Console.WriteLine("");
                 Console.WriteLine("Failed to open port " + _serialPort.PortName + ". Is it already in use? Use command o to retry.");
+                }
             }
             return _serialPort.IsOpen;
         }
@@ -420,6 +369,7 @@ namespace binaire
         {
             Console.WriteLine("Automatic mode activated. binaire will listen to the COM port for srampuf data packets.");
             Console.WriteLine("Enter 'stop' to exit automatic mode. All other input is disabled.");
+            commandFlush();
 
             _serialPort.DataReceived += autoDataReceivedAction;
 
@@ -444,14 +394,14 @@ namespace binaire
             if (port == null) { return; }
             if (port.BytesToRead < 40) { return; }
 
-            Console.WriteLine("Data received! {0} bytes are available.", port.BytesToRead);
-            Console.WriteLine("Let's wait 1000 ms...");
+            Console.WriteLine("Data received! Let's wait 1000 ms...");
             Thread.Sleep(1000);
             Console.WriteLine("{0} bytes are now available. Reading packet...", port.BytesToRead);
 
             try
             {
                 Read(port, false);
+                Console.WriteLine("{0} bytes were read.", _readBytes);
                 if (_localMode) { isPacketOk(); }
                 else { decodePacket(); }
             }
@@ -520,6 +470,10 @@ namespace binaire
             if (!magicNumber.SequenceEqual(rcvMagicNumber)) { Console.WriteLine("Packet not ok: Invalid protocol start."); return false; }
             Console.WriteLine("Packet received!");
 
+            var rcvBoardID = _dataBuffer[4..16];
+            int[] boardID = new int[Board.IdLength];
+            Buffer.BlockCopy(rcvBoardID, 0, boardID, 0, rcvBoardID.Length);
+
             var rcvStartAddress = _dataBuffer[20..24];
             int startAddress = BitConverter.ToInt32(rcvStartAddress);
 
@@ -537,7 +491,6 @@ namespace binaire
             return true;
         }
 
-
         private static void packetToDatabase(Board.BoardSpecifiers bs, int[] id, int pufStart, int pufEnd, float temp, byte[] fp)
         {
             if (fp == null) { throw new ArgumentException("fp must not be null."); }
@@ -549,6 +502,110 @@ namespace binaire
             Board b = Database.AddBoard(bs, id[0], id[1], id[2]);
             Reading? r = Database.AddReading(b, pufStart, pufEnd, temp, fp);
             Console.WriteLine(r);
+        }
+
+
+        // Enters the automatic test mode.
+        // Board behaviour: Reset -> Delay(10s) -> send packet -> nop...
+        // Binaire behaviour: Open COM port while board is in delay -> wait for packet -> decode -> close port -> Delay(...)
+        private static void commandTest()
+        {
+            Console.WriteLine($"Starting automated test procedure on {_serialPort.PortName}.");
+
+            //_localMode = true;    // during development
+
+            if (!tryCloseAndReopenPort()) { return; }
+
+            commandFlush();
+
+            // Timeout implemented with stopwatch
+            const int timeoutMs = 15000;
+            Stopwatch sw = new Stopwatch();
+
+            try
+            {
+                int count = 1;
+                while (true)
+                {
+                    Console.WriteLine("Board connected. Trying to read for 15 seconds...");
+                    sw.Restart();
+                    while (!tryTestRead())
+                    {
+                        if (sw.ElapsedMilliseconds > timeoutMs)
+                        {
+                            Console.WriteLine("Timeout during test - did not receive data. Returning to normal operation.");
+                            return;
+                        }
+                        Thread.Sleep(500);
+                    }
+
+                    Console.WriteLine("\n=================================");
+                    Console.WriteLine("Data received. This was packet #{0}", count++);
+                    Console.WriteLine("=================================\n");
+                    Console.WriteLine("Disconnecting COM port... Reconnect the board in the next 15 seconds.");
+                    if (!tryCloseAndReopenPort()) { return; }
+                    commandFlush();
+                }
+            }
+            catch (Exception ex) { Console.WriteLine("Error while reading packet: {0}", ex.ToString()); }
+        }
+
+
+
+        private static bool tryTestRead()
+        {
+            if (_serialPort.IsOpen == false) { return false; }
+            if (_serialPort.BytesToRead < 40) { return false; }
+
+            Console.WriteLine("Data received! Let's wait 1000 ms...");
+            Thread.Sleep(1000);
+            Console.WriteLine("{0} bytes are now available. Reading packet...", _serialPort.BytesToRead);
+
+            try
+            {
+                Read(_serialPort, false);
+                Console.WriteLine("{0} bytes were read.", _readBytes);
+                if (_localMode) { isPacketOk(); }
+                else { decodePacket(); }
+            }
+            catch (Exception e) { Console.WriteLine("Error while reading packet: {0}", e.ToString()); }
+
+            return true;
+        }
+
+
+        private static bool tryCloseAndReopenPort()
+        {
+            const int timeoutMs = 5000;            
+
+            // Give tester 15 seconds to disconnect the board. After that, try to reopen
+            CloseComPort();
+            Console.Write("Waiting for you to reconnect the board");
+            for (int i = 0; i < 15; i++)
+            {
+                Thread.Sleep(1000);
+                Console.Write(".");
+            }
+            Console.WriteLine("");
+
+            if (!OpenComPort(false))
+            {
+                Console.Write("Board not yet connected. Trying again for 5 seconds...");
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+
+                while (!OpenComPort(false))
+                {
+                    if (sw.ElapsedMilliseconds > timeoutMs)
+                    {
+                        Console.WriteLine("Timeout during test - board was not reconnected. Returning to normal operation.");
+                        return false;
+                    }
+                    Thread.Sleep(500);
+                }
+            }
+
+            return true;
         }
 
 
@@ -594,5 +651,667 @@ namespace binaire
             Console.WriteLine("i        Write byte array to black & white image (adapt source code).");
             Console.WriteLine("quit, q, exit    Exit binaire.");
         }
+
+
+
+
+
+
+        #region evaluationHelpers
+
+        // Functions starting from here are for fetching data from DB - attention: rudimentary implementation.
+
+        // Multi PUF Model: One device houses a large number of PUFs (35 in the experimental implementation)
+        // This function returns a list of pufsPerDevice lists, where each sublist holds all entries for a
+        // specific memory region (ex. all readings from 0x20005000 - 0x20005800 are stored in list[0])
+        private static List<List<Reading>> multiPufQuery(int boardId, int pufsPerDevice, int startAddress, int pufSize)
+        {
+            int address = startAddress;
+            List<List<Reading>> readingsFromBoard = new List<List<Reading>>();
+
+            using (var ctx = new Database.binaireDbContext())
+            {
+                for (int i = 0; i < pufsPerDevice; i++)
+                {
+                    var rlist = ctx.Readings.Where(p => p.Board.BoardId == boardId
+                                                     && p.PufStart == address
+                                                     && p.PufEnd == address + pufSize).ToList();
+                    address += pufSize;
+                    readingsFromBoard.Add(rlist);
+                }
+            }
+            return readingsFromBoard;
+        }
+
+        private static byte[]? calcKnownFP(List<Reading> readings)
+        {
+            if (readings.Count == 0) { return null; }
+            int pufSize = readings[0].PufEnd - readings[0].PufStart;
+            foreach(Reading r in readings) { if (r.PufEnd - r.PufStart != pufSize) return null; }   // FP of different length = faulty list
+
+            byte[] knownFP = new byte[pufSize];
+            int[] fpCount = getFpCount(readings);
+            double maxCount = (double)fpCount.Max();
+            if (maxCount == 0.0) { return null; }
+
+            // Go through each byte in the known FP
+            for (int k = 0; k < knownFP.Length; k++)
+            { 
+                byte theByte = 0;
+
+                // Go through each bit of the current byte of the known FP
+                for (int b = 0; b < 8; b++)
+                {
+                    int countIdx = k * 8 + b;
+
+                    // Probability of powering up to 1
+                    double p = (double)fpCount[countIdx] / maxCount;
+                    if (p >= 0.5)
+                    {
+                        theByte += (byte)(1 << (7 - b));
+                    }
+                }
+
+                knownFP[k] = theByte;
+            }
+
+            return knownFP;
+        }
+
+        // Contains 1 int for each bit in the given fingerprints.
+        // array[0] holds the number of times that the first bit was 1, etc.
+        private static int[] getFpCount(List<Reading> readings)
+        {
+            if (readings.Count == 0) { return null; }
+            int pufSize = readings[0].PufEnd - readings[0].PufStart;
+            int pufSizeBits = pufSize * 8;
+            foreach (Reading r in readings) { if (r.PufEnd - r.PufStart != pufSize) return null; }   // FP of different length = faulty list
+
+            int[] count = new int[pufSizeBits];
+
+            // Go through all readings, which hold 1 fingerprint each
+            for (int readingIdx = 0; readingIdx < readings.Count; readingIdx++)
+            {
+                // Go through the current fingerprint bytewise
+                for (int i = 0; i < pufSize; i++)
+                {
+                    byte b = readings[readingIdx].Fingerprint[i];
+
+                    // Go through each bit of the current byte and count
+                    for (int bitIdx = 0; bitIdx < 8; bitIdx++)
+                    {
+                        int countIdx = i * 8 + bitIdx;
+                        count[countIdx] += (b >> (7 - bitIdx)) & 1;     // MSB is saved first in the array
+                    }
+                }
+            }
+            return count;
+        }
+
+        // Calculate the average reliability from a given known fingerprint compared with a list of latent fp
+        private static double calcReliability(byte[] knownFP, List<Reading> readings)
+        {
+            return 1.0 - calcIntraHD(knownFP, readings);
+        }
+
+        private static double calcIntraHD(byte[] knownFP, List<Reading> readings)
+        {
+            if (readings.Count == 0) { return 0.0; }
+            double fhd = 0.0;
+            foreach (Reading r in readings)
+            {
+                fhd += HexComp.calcFHD(knownFP, r.Fingerprint);
+            }
+            return fhd /= readings.Count;      // intra HD
+        }
+
+        // Averages Uniformity over a list of readings
+        private static double calcUniformity(List<Reading> readings)
+        {
+            if (readings.Count == 0) { return 0.0; }
+            double uniformity = 0.0;
+            foreach (Reading r in readings)
+            {
+                uniformity += HexComp.calcBias(r.Fingerprint);
+            }
+            return uniformity /= readings.Count;
+        }
+
+        // Calculates pairwise uniqueness over the two given lists.
+        // Idea: sample m fingerprints from two PUF instances. Uniqueness gives the average distance
+        // between the two PUF instances, ideally 50% if they are from different devices.
+        private static double calcUniqueness(List<Reading> r1, List<Reading> r2)
+        {
+            if (r1.Count == 0 || r2.Count == 0 || r1.Count != r2.Count) { return 0.0; }
+            int m = r1.Count;
+            double uniqueness = 0.0;
+            for (int i = 0; i < m - 1; i++)
+            {
+                for (int j = i + 1; j < m; j++)
+                {
+                    uniqueness += HexComp.calcFHD(r1[i].Fingerprint, r2[j].Fingerprint);
+                }
+            }
+            return uniqueness * 2 / (m * (m-1));
+        }
+
+        #endregion
+
+
+        private static void listOfListToCSV<T>(List<List<T>> l, string csvname)
+        {
+            try
+            {
+                const char SEPARATOR = ';';
+                using (StreamWriter writer = new StreamWriter(csvname))
+                {
+                    l.ForEach(line =>
+                    {
+                        writer.WriteLine(string.Join(SEPARATOR, line));
+                    });
+                }
+            }
+            catch (Exception ex) { Console.WriteLine(ex.Message); }
+        }
+
+
+        private static void evaluation1()
+        {
+            using (var ctx = new Database.binaireDbContext())
+            {
+                const int pufsPerDevice = 35;
+                int address = 0x20005000;
+                const int pufSize = 0x800;
+
+                List<List<Reading>> readingsB4 = multiPufQuery(4, pufsPerDevice, 0x20005000, 0x800);
+                List<List<Reading>> readingsB7 = multiPufQuery(7, pufsPerDevice, 0x20005000, 0x800);
+
+                //int[] bitcountBoard4Puf0 = getFpCount(readingsB4[0]);
+                //BinaryToImage.SaveHeatmapImage(bitcountBoard4Puf0, readingsB4[0].Count, 128, 128, "eval1_heatmap_board4_puf0.png");
+
+                //int[] bitcountBoard4Puf1 = getFpCount(readingsB4[1]);
+                //BinaryToImage.SaveHeatmapImage(bitcountBoard4Puf1, readingsB4[1].Count, 128, 128, "eval1_heatmap_board4_puf1.png");
+
+
+
+                int n = readingsB4.Count;
+                int m = readingsB4[0].Count;
+                List<double> bias4 = new List<double>();
+                List<double> bias7 = new List<double>();
+
+                // Uniformity
+                //for (int i = 0; i < n; i++)
+                //{
+                //    bias4.Add(calcUniformity(readingsB4[i]));
+                //    bias7.Add(calcUniformity(readingsB7[i]));
+                //}
+                //ExportData.WriteCsv(bias4, "eval1_uniformity_board4.csv");
+                //ExportData.WriteCsv(bias7, "eval1_uniformity_board7.csv");
+
+
+                List<double> intraHD4 = new List<double>();
+                List<double> intraHD7 = new List<double>();
+                List<byte[]> knownFP4 = new List<byte[]>();
+                List<byte[]> knownFP7 = new List<byte[]>();
+
+                // Reliability
+                //for (int i = 0; i < n; i++)
+                //{
+                //    knownFP4.Add(calcKnownFP(readingsB4[i]));
+                //    knownFP7.Add(calcKnownFP(readingsB7[i]));
+                //    intraHD4.Add(calcIntraHD(knownFP4[i], readingsB4[i]));
+                //    intraHD7.Add(calcIntraHD(knownFP7[i], readingsB7[i]));
+                //}
+                //ExportData.WriteCsv(intraHD4, "eval1_intraHD_board4.csv");
+                //ExportData.WriteCsv(intraHD7, "eval1_intraHD_board7.csv");
+
+
+                List<double> uniqueness4 = new List<double>();
+                List<double> uniqueness7 = new List<double>();
+                List<double> uniqueness4vs7 = new List<double>();
+
+                // Uniqueness
+                for (int i = 0; i < m - 1; i++)
+                {
+                    for (int j = i + 1; j < m; j++)
+                    {
+                        uniqueness4.Add(calcUniqueness(readingsB4[i], readingsB4[j]));
+                        uniqueness7.Add(calcUniqueness(readingsB7[i], readingsB7[j]));
+                        uniqueness4vs7.Add(calcUniqueness(readingsB4[i], readingsB7[j]));
+                    }
+                }
+                ExportData.WriteCsv(uniqueness4, "eval1_uniqueness_board4.csv");
+                ExportData.WriteCsv(uniqueness7, "eval1_uniqueness_board7.csv");
+                ExportData.WriteCsv(uniqueness4vs7, "eval1_uniqueness_board4vs7.csv");
+            }
+        }
+
+
+        // Temperature data from all 14 boards
+        private static void evaluation2()
+        {
+            using (var ctx = new Database.binaireDbContext())
+            {
+                const int nBoards = 14;
+                const int nReadings = 50;
+
+                List<List<Reading>> temp10 = new List<List<Reading>>();
+                List<List<Reading>> temp25 = new List<List<Reading>>();
+                List<List<Reading>> temp50 = new List<List<Reading>>();
+
+                for (int i = 0; i < nBoards; i++)
+                {
+                    int boardNr = i + 4;    // IDs 4--17
+                    temp10.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 2633
+                                                     && p.ReadingId <= 3343).ToList());
+                    temp25.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 3344
+                                                     && p.ReadingId <= 4043).ToList());
+                    temp50.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 4044
+                                                     && p.ReadingId <= 4743).ToList());
+                }
+
+                List<byte[]> knownFP10 = new List<byte[]>();
+                List<byte[]> knownFP25 = new List<byte[]>();
+                List<byte[]> knownFP50 = new List<byte[]>();
+
+                for (int i = 0; i < nBoards; i++)
+                {
+                    knownFP10.Add(calcKnownFP(temp10[i]));
+                    knownFP25.Add(calcKnownFP(temp25[i]));
+                    knownFP50.Add(calcKnownFP(temp50[i]));
+                }
+
+                // Graph 1: Temperatures
+                // Result: 3 List of dimensions 14x50 - 50 entries for each board and temperature
+                {
+                    List<List<double>> temperatures10 = new List<List<double>>();
+                    List<List<double>> temperatures25 = new List<List<double>>();
+                    List<List<double>> temperatures50 = new List<List<double>>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        List<double> t10 = new List<double>();
+                        List<double> t25 = new List<double>();
+                        List<double> t50 = new List<double>();
+
+                        for (int j = 0; j < nReadings; j++)
+                        {
+                            t10.Add(temp10[i][j].Temperature);
+                            t25.Add(temp25[i][j].Temperature);
+                            t50.Add(temp50[i][j].Temperature);
+                        }
+
+                        temperatures10.Add(t10);
+                        temperatures25.Add(t25);
+                        temperatures50.Add(t50);
+                    }
+
+                    listOfListToCSV(temperatures10, "eval2_temperatures10.csv");
+                    listOfListToCSV(temperatures25, "eval2_temperatures25.csv");
+                    listOfListToCSV(temperatures50, "eval2_temperatures50.csv");
+                }
+
+
+                // Graph 2: Intra HD of all measurements compared with FK25
+                // Result: 3 List of dimensions 14x50 - 50 entries for each board and temperature
+                {
+                    List<List<double>> intraHD25_10 = new List<List<double>>();
+                    List<List<double>> intraHD25_25 = new List<List<double>>();
+                    List<List<double>> intraHD25_50 = new List<List<double>>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        List<double> i10 = new List<double>();
+                        List<double> i25 = new List<double>();
+                        List<double> i50 = new List<double>();
+
+                        for (int j = 0; j < nReadings; j++)
+                        {
+                            i10.Add(HexComp.calcFHD(knownFP25[i], temp10[i][j].Fingerprint));
+                            i25.Add(HexComp.calcFHD(knownFP25[i], temp25[i][j].Fingerprint));
+                            i50.Add(HexComp.calcFHD(knownFP25[i], temp50[i][j].Fingerprint));
+                        }
+
+                        intraHD25_10.Add(i10);
+                        intraHD25_25.Add(i25);
+                        intraHD25_50.Add(i50);
+                    }
+
+                    listOfListToCSV(intraHD25_10, "eval2_intraHD25_10.csv");
+                    listOfListToCSV(intraHD25_25, "eval2_intraHD25_25.csv");
+                    listOfListToCSV(intraHD25_50, "eval2_intraHD25_50.csv");
+                }
+
+
+
+
+                // Graph 3: Uniformity per temperature
+                // Result: 3 List with 14 elements - 1 entry for each board and temperature
+                {
+                    List<double> uniformity10 = new List<double>();
+                    List<double> uniformity25 = new List<double>();
+                    List<double> uniformity50 = new List<double>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        uniformity10.Add(calcUniformity(temp10[i]));
+                        uniformity25.Add(calcUniformity(temp25[i]));
+                        uniformity50.Add(calcUniformity(temp50[i]));
+                    }
+
+                    ExportData.WriteCsv(uniformity10, "eval2_uniformity10.csv");
+                    ExportData.WriteCsv(uniformity25, "eval2_uniformity25.csv");
+                    ExportData.WriteCsv(uniformity50, "eval2_uniformity50.csv");
+                }
+
+                // Graph 4: Intra HD per temperature
+                {
+                    List<double> intraHD10 = new List<double>();
+                    List<double> intraHD25 = new List<double>();
+                    List<double> intraHD50 = new List<double>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        intraHD10.Add(calcIntraHD(knownFP10[i], temp10[i]));
+                        intraHD25.Add(calcIntraHD(knownFP25[i], temp10[i]));
+                        intraHD50.Add(calcIntraHD(knownFP50[i], temp10[i]));
+                    }
+
+                    ExportData.WriteCsv(intraHD10, "eval2_intraHD10.csv");
+                    ExportData.WriteCsv(intraHD25, "eval2_intraHD25.csv");
+                    ExportData.WriteCsv(intraHD50, "eval2_intraHD50.csv");
+                }
+
+                // Graph 5: Uniqueness per temperature
+                // Binomial Coefficient of (14 over 2) = 91 entries per temperature
+                {
+                    List<double> uniqueness10 = new List<double>();
+                    List<double> uniqueness25 = new List<double>();
+                    List<double> uniqueness50 = new List<double>();
+
+                    for (int i = 0; i < nBoards - 1; i++)
+                    {
+                        for (int j = i + 1; j < nBoards; j++)
+                        {
+                            uniqueness10.Add(calcUniqueness(temp10[i], temp10[j]));
+                            uniqueness25.Add(calcUniqueness(temp25[i], temp25[j]));
+                            uniqueness50.Add(calcUniqueness(temp50[i], temp50[j]));
+                        }
+                    }
+
+                    ExportData.WriteCsv(uniqueness10, "eval2_uniqueness10.csv");
+                    ExportData.WriteCsv(uniqueness25, "eval2_uniqueness25.csv");
+                    ExportData.WriteCsv(uniqueness50, "eval2_uniqueness50.csv");
+                }
+            }
+        }
+
+
+
+
+
+
+        //private static void evaluation3()
+        //{
+        //    using (var ctx = new Database.binaireDbContext())
+        //    {
+        //        List<Reading> b4Temp10 = ctx.Readings.Where(p => p.Board.BoardId == 4
+        //                                                      && p.ReadingId >= 2221
+        //                                                      && p.ReadingId <= 2420).ToList();
+        //        List<Reading> b6Temp10 = ctx.Readings.Where(p => p.Board.BoardId == 6
+        //                                                      && p.ReadingId >= 2221
+        //                                                      && p.ReadingId <= 2420).ToList();
+        //        List<Reading> b7Temp10 = ctx.Readings.Where(p => p.Board.BoardId == 7
+        //                                                      && p.ReadingId >= 2221
+        //                                                      && p.ReadingId <= 2420).ToList();
+        //        List<Reading> b8Temp10 = ctx.Readings.Where(p => p.Board.BoardId == 8
+        //                                                      && p.ReadingId >= 2221
+        //                                                      && p.ReadingId <= 2420).ToList();
+
+
+        //        List<Reading> b4Temp25 = ctx.Readings.Where(p => p.Board.BoardId == 4
+        //                                                      && p.ReadingId >= 2429
+        //                                                      && p.ReadingId <= 2628).ToList();
+        //        List<Reading> b6Temp25 = ctx.Readings.Where(p => p.Board.BoardId == 6
+        //                                                      && p.ReadingId >= 2429
+        //                                                      && p.ReadingId <= 2628).ToList();
+        //        List<Reading> b7Temp25 = ctx.Readings.Where(p => p.Board.BoardId == 7
+        //                                                      && p.ReadingId >= 2429
+        //                                                      && p.ReadingId <= 2628).ToList();
+        //        List<Reading> b8Temp25 = ctx.Readings.Where(p => p.Board.BoardId == 8
+        //                                                      && p.ReadingId >= 2429
+        //                                                      && p.ReadingId <= 2628).ToList();
+
+
+        //        List<Reading> b4Temp50 = ctx.Readings.Where(p => p.Board.BoardId == 4
+        //                                                      && p.ReadingId >= 2021
+        //                                                      && p.ReadingId <= 2220).ToList();
+        //        List<Reading> b6Temp50 = ctx.Readings.Where(p => p.Board.BoardId == 6
+        //                                                      && p.ReadingId >= 2021
+        //                                                      && p.ReadingId <= 2220).ToList();
+        //        List<Reading> b7Temp50 = ctx.Readings.Where(p => p.Board.BoardId == 7
+        //                                                      && p.ReadingId >= 2021
+        //                                                      && p.ReadingId <= 2220).ToList();
+        //        List<Reading> b8Temp50 = ctx.Readings.Where(p => p.Board.BoardId == 8
+        //                                                      && p.ReadingId >= 2021
+        //                                                      && p.ReadingId <= 2220).ToList();
+
+        //        int n = b4Temp10.Count;
+
+        //        var knownFP_b4Temp10 = calcKnownFP(b4Temp10);
+        //        var knownFP_b4Temp25 = calcKnownFP(b4Temp25);
+        //        var knownFP_b4Temp50 = calcKnownFP(b4Temp50);
+
+        //        var knownFP_b6Temp10 = calcKnownFP(b6Temp10);
+        //        var knownFP_b6Temp25 = calcKnownFP(b6Temp25);
+        //        var knownFP_b6Temp50 = calcKnownFP(b6Temp50);
+
+        //        var knownFP_b7Temp10 = calcKnownFP(b7Temp10);
+        //        var knownFP_b7Temp25 = calcKnownFP(b7Temp25);
+        //        var knownFP_b7Temp50 = calcKnownFP(b7Temp50);
+
+        //        var knownFP_b8Temp10 = calcKnownFP(b8Temp10);
+        //        var knownFP_b8Temp25 = calcKnownFP(b8Temp25);
+        //        var knownFP_b8Temp50 = calcKnownFP(b8Temp50);
+
+        //        // Graph 1: Temperatures
+        //        // Result: List of 150 entries for each board - 50 for 10°C, 50 for 25°C, 50 for 50°C
+        //        {
+        //            List<double> temperatures_b4 = new List<double>();
+        //            List<double> temperatures_b6 = new List<double>();
+        //            List<double> temperatures_b7 = new List<double>();
+        //            List<double> temperatures_b8 = new List<double>();
+
+        //            for (int i = 0; i < n; i++)
+        //            {
+        //                temperatures_b4.Add(b4Temp10[i].Temperature);
+        //                temperatures_b6.Add(b6Temp10[i].Temperature);
+        //                temperatures_b7.Add(b7Temp10[i].Temperature);
+        //                temperatures_b8.Add(b8Temp10[i].Temperature);
+        //            }
+        //            for (int i = 0; i < n; i++)
+        //            {
+        //                temperatures_b4.Add(b4Temp25[i].Temperature);
+        //                temperatures_b6.Add(b6Temp25[i].Temperature);
+        //                temperatures_b7.Add(b7Temp25[i].Temperature);
+        //                temperatures_b8.Add(b8Temp25[i].Temperature);
+        //            }
+        //            for (int i = 0; i < n; i++)
+        //            {
+        //                temperatures_b4.Add(b4Temp50[i].Temperature);
+        //                temperatures_b6.Add(b6Temp50[i].Temperature);
+        //                temperatures_b7.Add(b7Temp50[i].Temperature);
+        //                temperatures_b8.Add(b8Temp50[i].Temperature);
+        //            }
+        //            ExportData.WriteCsv(temperatures_b4, "eval3_temperatures_board4.csv");
+        //            ExportData.WriteCsv(temperatures_b6, "eval3_temperatures_board6.csv");
+        //            ExportData.WriteCsv(temperatures_b7, "eval3_temperatures_board7.csv");
+        //            ExportData.WriteCsv(temperatures_b8, "eval3_temperatures_board8.csv");
+        //        }
+
+
+        //        // Graph 2: Intra HD of all measurements compared with FK25
+        //        // Result: List of 150 entries for each board - 50 for 10°C, 50 for 25°C, 50 for 50°C
+        //        {
+        //            List<double> intraHD25_b4 = new List<double>();
+        //            List<double> intraHD25_b6 = new List<double>();
+        //            List<double> intraHD25_b7 = new List<double>();
+        //            List<double> intraHD25_b8 = new List<double>();
+
+        //            for (int i = 0; i < n; i++)
+        //            {
+        //                intraHD25_b4.Add(HexComp.calcFHD(knownFP_b4Temp25, b4Temp10[i].Fingerprint));
+        //                intraHD25_b6.Add(HexComp.calcFHD(knownFP_b6Temp25, b6Temp10[i].Fingerprint));
+        //                intraHD25_b7.Add(HexComp.calcFHD(knownFP_b7Temp25, b7Temp10[i].Fingerprint));
+        //                intraHD25_b8.Add(HexComp.calcFHD(knownFP_b8Temp25, b8Temp10[i].Fingerprint));
+        //            }
+        //            for (int i = 0; i < n; i++)
+        //            {
+        //                intraHD25_b4.Add(HexComp.calcFHD(knownFP_b4Temp25, b4Temp25[i].Fingerprint));
+        //                intraHD25_b6.Add(HexComp.calcFHD(knownFP_b6Temp25, b6Temp25[i].Fingerprint));
+        //                intraHD25_b7.Add(HexComp.calcFHD(knownFP_b7Temp25, b7Temp25[i].Fingerprint));
+        //                intraHD25_b8.Add(HexComp.calcFHD(knownFP_b8Temp25, b8Temp25[i].Fingerprint));
+        //            }
+        //            for (int i = 0; i < n; i++)
+        //            {
+        //                intraHD25_b4.Add(HexComp.calcFHD(knownFP_b4Temp25, b4Temp50[i].Fingerprint));
+        //                intraHD25_b6.Add(HexComp.calcFHD(knownFP_b6Temp25, b6Temp50[i].Fingerprint));
+        //                intraHD25_b7.Add(HexComp.calcFHD(knownFP_b7Temp25, b7Temp50[i].Fingerprint));
+        //                intraHD25_b8.Add(HexComp.calcFHD(knownFP_b8Temp25, b8Temp50[i].Fingerprint));
+        //            }
+        //            ExportData.WriteCsv(intraHD25_b4, "eval3_intraHD25_board4.csv");
+        //            ExportData.WriteCsv(intraHD25_b6, "eval3_intraHD25_board6.csv");
+        //            ExportData.WriteCsv(intraHD25_b7, "eval3_intraHD25_board7.csv");
+        //            ExportData.WriteCsv(intraHD25_b8, "eval3_intraHD25_board8.csv");
+        //        }
+
+
+
+
+        //        // Graph 3: Uniformity per temperature
+        //        // Result: List of 200 entries for each temperature - 50 for board 4, then 50 for board 6 etc.
+        //        {
+        //            List<double> uniformity_temp10 = new List<double>();
+        //            List<double> uniformity_temp25 = new List<double>();
+        //            List<double> uniformity_temp50 = new List<double>();
+
+        //            uniformity_temp10.Add(calcUniformity(b4Temp10));
+        //            uniformity_temp10.Add(calcUniformity(b6Temp10));
+        //            uniformity_temp10.Add(calcUniformity(b7Temp10));
+        //            uniformity_temp10.Add(calcUniformity(b8Temp10));
+
+        //            uniformity_temp25.Add(calcUniformity(b4Temp25));
+        //            uniformity_temp25.Add(calcUniformity(b6Temp25));
+        //            uniformity_temp25.Add(calcUniformity(b7Temp25));
+        //            uniformity_temp25.Add(calcUniformity(b8Temp25));
+
+        //            uniformity_temp50.Add(calcUniformity(b4Temp50));
+        //            uniformity_temp50.Add(calcUniformity(b6Temp50));
+        //            uniformity_temp50.Add(calcUniformity(b7Temp50));
+        //            uniformity_temp50.Add(calcUniformity(b8Temp50));
+
+        //            ExportData.WriteCsv(uniformity_temp10, "eval3_uniformity_temp10.csv");
+        //            ExportData.WriteCsv(uniformity_temp25, "eval3_uniformity_temp25.csv");
+        //            ExportData.WriteCsv(uniformity_temp50, "eval3_uniformity_temp50.csv");
+        //        }
+
+        //        // Graph 4: Intra HD per temperature
+        //        {
+        //            List<double> intraHD_temp10 = new List<double>();
+        //            List<double> intraHD_temp25 = new List<double>();
+        //            List<double> intraHD_temp50 = new List<double>();
+
+        //            intraHD_temp10.Add(calcIntraHD(knownFP_b4Temp10, b4Temp10));
+        //            intraHD_temp10.Add(calcIntraHD(knownFP_b6Temp10, b6Temp10));
+        //            intraHD_temp10.Add(calcIntraHD(knownFP_b7Temp10, b7Temp10));
+        //            intraHD_temp10.Add(calcIntraHD(knownFP_b8Temp10, b8Temp10));
+
+        //            intraHD_temp25.Add(calcIntraHD(knownFP_b4Temp25, b4Temp25));
+        //            intraHD_temp25.Add(calcIntraHD(knownFP_b6Temp25, b6Temp25));
+        //            intraHD_temp25.Add(calcIntraHD(knownFP_b7Temp25, b7Temp25));
+        //            intraHD_temp25.Add(calcIntraHD(knownFP_b8Temp25, b8Temp25));
+
+        //            intraHD_temp50.Add(calcIntraHD(knownFP_b4Temp50, b4Temp50));
+        //            intraHD_temp50.Add(calcIntraHD(knownFP_b6Temp50, b6Temp50));
+        //            intraHD_temp50.Add(calcIntraHD(knownFP_b7Temp50, b7Temp50));
+        //            intraHD_temp50.Add(calcIntraHD(knownFP_b8Temp50, b8Temp50));
+
+        //            ExportData.WriteCsv(intraHD_temp10, "eval3_intraHD_temp10.csv");
+        //            ExportData.WriteCsv(intraHD_temp25, "eval3_intraHD_temp25.csv");
+        //            ExportData.WriteCsv(intraHD_temp50, "eval3_intraHD_temp50.csv");
+        //        }
+
+        //        // Graph 5: Uniqueness per temperature
+        //        {
+        //            const int m = 4;
+        //            List<double> uniqueness_temp10 = new List<double>();
+        //            List<double> uniqueness_temp25 = new List<double>();
+        //            List<double> uniqueness_temp50 = new List<double>();
+
+        //            List<Reading>[] series_temp10 = new List<Reading>[m] { b4Temp10, b6Temp10, b7Temp10, b8Temp10 };
+        //            List<Reading>[] series_temp25 = new List<Reading>[m] { b4Temp25, b6Temp25, b7Temp25, b8Temp25 };
+        //            List<Reading>[] series_temp50 = new List<Reading>[m] { b4Temp50, b6Temp50, b7Temp50, b8Temp50 };
+
+        //            for (int i = 0; i < m - 1; i++)
+        //            {
+        //                for (int j = i + 1; j < m; j++)
+        //                {
+        //                    uniqueness_temp10.Add(calcUniqueness(series_temp10[i], series_temp10[j]));
+        //                    uniqueness_temp25.Add(calcUniqueness(series_temp25[i], series_temp25[j]));
+        //                    uniqueness_temp50.Add(calcUniqueness(series_temp50[i], series_temp50[j]));
+        //                }
+        //            }
+
+        //            ExportData.WriteCsv(uniqueness_temp10, "eval3_uniqueness_temp10.csv");
+        //            ExportData.WriteCsv(uniqueness_temp25, "eval3_uniqueness_temp25.csv");
+        //            ExportData.WriteCsv(uniqueness_temp50, "eval3_uniqueness_temp50.csv");
+        //        }
+        //    }
+        //}
+    
+        
+        private static void saveFuzzyExtractorData(uint boardid, uint temp)
+        {
+            uint addressStart = 0;
+            uint addressEnd = 0;
+            if      (temp == 10) { addressStart = 2633; addressEnd = 3343; }
+            else if (temp == 25) { addressStart = 3344; addressEnd = 4043; }
+            else if (temp == 50) { addressStart = 4044; addressEnd = 4743; }
+            else { Console.WriteLine("saveFuzzyExtractorData(): Invalid Params."); return; }
+
+
+            using (var ctx = new Database.binaireDbContext())
+            {
+
+                List<Reading> readings_b4t25 = new List<Reading>();
+                readings_b4t25 = ctx.Readings.Where(r => r.Board.BoardId == boardid
+                                                      && r.ReadingId >= addressStart
+                                                      && r.ReadingId <= addressEnd).ToList();
+                byte[] knownFP = calcKnownFP(readings_b4t25);
+
+                const int nBytes = 16;
+                List<List<byte>> fingerprints16 = new List<List<byte>>();
+
+                foreach (var reading in readings_b4t25)
+                {
+                    List<byte> bytelist = new List<byte>(reading.Fingerprint[0..nBytes]);
+                    fingerprints16.Add(bytelist);
+                }
+
+                List<List<byte>> knownFP16 = new List<List<byte>>();
+                knownFP16.Add(new List<byte>(knownFP[0..nBytes]));
+
+
+
+
+                listOfListToCSV(fingerprints16, $"readings_b{boardid}t{temp}.csv");
+                listOfListToCSV(knownFP16, $"knownFP_b{boardid}t{temp}.csv");
+            }
+        }
+
+
     }
 }
