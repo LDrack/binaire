@@ -1,4 +1,21 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿//########################################################################
+// (C) Embedded Systems Lab
+// All rights reserved.
+// ------------------------------------------------------------
+// This document contains proprietary information belonging to
+// Research & Development FH OÖ Forschungs und Entwicklungs GmbH.
+// Using, passing on and copying of this document or parts of it
+// is generally not permitted without prior written authorization.
+// ------------------------------------------------------------
+// info(at)embedded-lab.at
+// https://www.embedded-lab.at/
+//########################################################################
+// File name: Database.cs
+// Date of file creation: 2022-04-28
+// List of autors: Lucas Drack
+//########################################################################
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace binaire
@@ -34,7 +51,7 @@ namespace binaire
         public static Board AddBoard(Board.BoardSpecifiers bs, int id1, int id2, int id3)
         {
             // Change this if more boards are added in the future:
-            if (bs != Board.BoardSpecifiers.NucleoF401RE) { throw new ArgumentException("Invalid boardSpecifier in addBoard()."); }
+            if (!Enum.IsDefined(typeof(Board.BoardSpecifiers), bs)) { throw new ArgumentException("Invalid boardSpecifier in addBoard()."); }
 
             Board? b = GetBoard(bs, id1, id2, id3);
             if (b == null)
