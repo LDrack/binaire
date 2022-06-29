@@ -234,7 +234,11 @@ namespace binaire
                     //try { evaluation2(); }
                     //catch (Exception ex) { Console.WriteLine(ex.Message); }
 
-                    saveFuzzyExtractorData(4, 50);
+
+                    try { evaluationf446WithoutOutliers(); }
+                    catch (Exception ex) { Console.WriteLine(ex.Message); }
+
+                    //saveFuzzyExtractorData(4, 50);
 
                     Console.WriteLine("Done.");
                 }
@@ -1071,6 +1075,341 @@ namespace binaire
 
 
 
+        // Same as evaluation 2 but for the F446 boards
+        private static void evaluationf446()
+        {
+            using (var ctx = new Database.binaireDbContext())
+            {
+                const int nBoards = 14;
+                const int nReadings = 50;
+
+                List<List<Reading>> temp10 = new List<List<Reading>>();
+                List<List<Reading>> temp25 = new List<List<Reading>>();
+                List<List<Reading>> temp50 = new List<List<Reading>>();
+
+                for (int i = 0; i < nBoards; i++)
+                {
+                    int boardNr = i + 18;    // IDs 18--31
+                    temp10.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 6240
+                                                     && p.ReadingId <= 6950).ToList());
+                    temp25.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 4746
+                                                     && p.ReadingId <= 5527).ToList());
+                    temp50.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 5528
+                                                     && p.ReadingId <= 6239).ToList());
+                }
+
+                List<byte[]> knownFP10 = new List<byte[]>();
+                List<byte[]> knownFP25 = new List<byte[]>();
+                List<byte[]> knownFP50 = new List<byte[]>();
+
+                for (int i = 0; i < nBoards; i++)
+                {
+                    knownFP10.Add(calcKnownFP(temp10[i]));
+                    knownFP25.Add(calcKnownFP(temp25[i]));
+                    knownFP50.Add(calcKnownFP(temp50[i]));
+                }
+
+                // Graph 1: Temperatures
+                // Result: 3 List of dimensions 14x50 - 50 entries for each board and temperature
+                {
+                    List<List<double>> temperatures10 = new List<List<double>>();
+                    List<List<double>> temperatures25 = new List<List<double>>();
+                    List<List<double>> temperatures50 = new List<List<double>>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        List<double> t10 = new List<double>();
+                        List<double> t25 = new List<double>();
+                        List<double> t50 = new List<double>();
+
+                        for (int j = 0; j < nReadings; j++)
+                        {
+                            t10.Add(temp10[i][j].Temperature);
+                            t25.Add(temp25[i][j].Temperature);
+                            t50.Add(temp50[i][j].Temperature);
+                        }
+
+                        temperatures10.Add(t10);
+                        temperatures25.Add(t25);
+                        temperatures50.Add(t50);
+                    }
+
+                    listOfListToCSV(temperatures10, "evalf446_temperatures10.csv");
+                    listOfListToCSV(temperatures25, "evalf446_temperatures25.csv");
+                    listOfListToCSV(temperatures50, "evalf446_temperatures50.csv");
+                }
+
+
+                // Graph 2: Intra HD of all measurements compared with FK25
+                // Result: 3 List of dimensions 14x50 - 50 entries for each board and temperature
+                {
+                    List<List<double>> intraHD25_10 = new List<List<double>>();
+                    List<List<double>> intraHD25_25 = new List<List<double>>();
+                    List<List<double>> intraHD25_50 = new List<List<double>>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        List<double> i10 = new List<double>();
+                        List<double> i25 = new List<double>();
+                        List<double> i50 = new List<double>();
+
+                        for (int j = 0; j < nReadings; j++)
+                        {
+                            i10.Add(HexComp.calcFHD(knownFP25[i], temp10[i][j].Fingerprint));
+                            i25.Add(HexComp.calcFHD(knownFP25[i], temp25[i][j].Fingerprint));
+                            i50.Add(HexComp.calcFHD(knownFP25[i], temp50[i][j].Fingerprint));
+                        }
+
+                        intraHD25_10.Add(i10);
+                        intraHD25_25.Add(i25);
+                        intraHD25_50.Add(i50);
+                    }
+
+                    listOfListToCSV(intraHD25_10, "evalf446_intraHD25_10.csv");
+                    listOfListToCSV(intraHD25_25, "evalf446_intraHD25_25.csv");
+                    listOfListToCSV(intraHD25_50, "evalf446_intraHD25_50.csv");
+                }
+
+
+
+
+                // Graph 3: Uniformity per temperature
+                // Result: 3 List with 14 elements - 1 entry for each board and temperature
+                {
+                    List<double> uniformity10 = new List<double>();
+                    List<double> uniformity25 = new List<double>();
+                    List<double> uniformity50 = new List<double>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        uniformity10.Add(calcUniformity(temp10[i]));
+                        uniformity25.Add(calcUniformity(temp25[i]));
+                        uniformity50.Add(calcUniformity(temp50[i]));
+                    }
+
+                    ExportData.WriteCsv(uniformity10, "evalf446_uniformity10.csv");
+                    ExportData.WriteCsv(uniformity25, "evalf446_uniformity25.csv");
+                    ExportData.WriteCsv(uniformity50, "evalf446_uniformity50.csv");
+                }
+
+                // Graph 4: Intra HD per temperature
+                {
+                    List<double> intraHD10 = new List<double>();
+                    List<double> intraHD25 = new List<double>();
+                    List<double> intraHD50 = new List<double>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        intraHD10.Add(calcIntraHD(knownFP10[i], temp10[i]));
+                        intraHD25.Add(calcIntraHD(knownFP25[i], temp10[i]));
+                        intraHD50.Add(calcIntraHD(knownFP50[i], temp10[i]));
+                    }
+
+                    ExportData.WriteCsv(intraHD10, "evalf446_intraHD10.csv");
+                    ExportData.WriteCsv(intraHD25, "evalf446_intraHD25.csv");
+                    ExportData.WriteCsv(intraHD50, "evalf446_intraHD50.csv");
+                }
+
+                // Graph 5: Uniqueness per temperature
+                // Binomial Coefficient of (14 over 2) = 91 entries per temperature
+                {
+                    List<double> uniqueness10 = new List<double>();
+                    List<double> uniqueness25 = new List<double>();
+                    List<double> uniqueness50 = new List<double>();
+
+                    for (int i = 0; i < nBoards - 1; i++)
+                    {
+                        for (int j = i + 1; j < nBoards; j++)
+                        {
+                            uniqueness10.Add(calcUniqueness(temp10[i], temp10[j]));
+                            uniqueness25.Add(calcUniqueness(temp25[i], temp25[j]));
+                            uniqueness50.Add(calcUniqueness(temp50[i], temp50[j]));
+                        }
+                    }
+
+                    ExportData.WriteCsv(uniqueness10, "evalf446_uniqueness10.csv");
+                    ExportData.WriteCsv(uniqueness25, "evalf446_uniqueness25.csv");
+                    ExportData.WriteCsv(uniqueness50, "evalf446_uniqueness50.csv");
+                }
+            }
+        }
+
+
+
+
+
+        // Same as evaluation 2 but for the F446 boards
+        private static void evaluationf446WithoutOutliers()
+        {
+            using (var ctx = new Database.binaireDbContext())
+            {
+                const int nBoards = 12;
+                const int nReadings = 50;
+
+                List<List<Reading>> temp10 = new List<List<Reading>>();
+                List<List<Reading>> temp25 = new List<List<Reading>>();
+                List<List<Reading>> temp50 = new List<List<Reading>>();
+
+                for (int i = 0; i < nBoards+2; i++)
+                {
+                    int boardNr = i + 18;    // IDs 18--31
+                    if (boardNr == 22 || boardNr == 26) { continue; }
+
+                    temp10.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 6240
+                                                     && p.ReadingId <= 6950).ToList());
+                    temp25.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 4746
+                                                     && p.ReadingId <= 5527).ToList());
+                    temp50.Add(ctx.Readings.Where(p => p.Board.BoardId == boardNr
+                                                     && p.ReadingId >= 5528
+                                                     && p.ReadingId <= 6239).ToList());
+                }
+
+                List<byte[]> knownFP10 = new List<byte[]>();
+                List<byte[]> knownFP25 = new List<byte[]>();
+                List<byte[]> knownFP50 = new List<byte[]>();
+
+                for (int i = 0; i < nBoards; i++)
+                {
+                    knownFP10.Add(calcKnownFP(temp10[i]));
+                    knownFP25.Add(calcKnownFP(temp25[i]));
+                    knownFP50.Add(calcKnownFP(temp50[i]));
+                }
+
+                // Graph 1: Temperatures
+                // Result: 3 List of dimensions 14x50 - 50 entries for each board and temperature
+                {
+                    List<List<double>> temperatures10 = new List<List<double>>();
+                    List<List<double>> temperatures25 = new List<List<double>>();
+                    List<List<double>> temperatures50 = new List<List<double>>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        List<double> t10 = new List<double>();
+                        List<double> t25 = new List<double>();
+                        List<double> t50 = new List<double>();
+
+                        for (int j = 0; j < nReadings; j++)
+                        {
+                            t10.Add(temp10[i][j].Temperature);
+                            t25.Add(temp25[i][j].Temperature);
+                            t50.Add(temp50[i][j].Temperature);
+                        }
+
+                        temperatures10.Add(t10);
+                        temperatures25.Add(t25);
+                        temperatures50.Add(t50);
+                    }
+
+                    listOfListToCSV(temperatures10, "evalf446_noOut_temperatures10.csv");
+                    listOfListToCSV(temperatures25, "evalf446_noOut_temperatures25.csv");
+                    listOfListToCSV(temperatures50, "evalf446_noOut_temperatures50.csv");
+                }
+
+
+                // Graph 2: Intra HD of all measurements compared with FK25
+                // Result: 3 List of dimensions 14x50 - 50 entries for each board and temperature
+                {
+                    List<List<double>> intraHD25_10 = new List<List<double>>();
+                    List<List<double>> intraHD25_25 = new List<List<double>>();
+                    List<List<double>> intraHD25_50 = new List<List<double>>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        List<double> i10 = new List<double>();
+                        List<double> i25 = new List<double>();
+                        List<double> i50 = new List<double>();
+
+                        for (int j = 0; j < nReadings; j++)
+                        {
+                            i10.Add(HexComp.calcFHD(knownFP25[i], temp10[i][j].Fingerprint));
+                            i25.Add(HexComp.calcFHD(knownFP25[i], temp25[i][j].Fingerprint));
+                            i50.Add(HexComp.calcFHD(knownFP25[i], temp50[i][j].Fingerprint));
+                        }
+
+                        intraHD25_10.Add(i10);
+                        intraHD25_25.Add(i25);
+                        intraHD25_50.Add(i50);
+                    }
+
+                    listOfListToCSV(intraHD25_10, "evalf446_noOut_intraHD25_10.csv");
+                    listOfListToCSV(intraHD25_25, "evalf446_noOut_intraHD25_25.csv");
+                    listOfListToCSV(intraHD25_50, "evalf446_noOut_intraHD25_50.csv");
+                }
+
+
+
+
+                // Graph 3: Uniformity per temperature
+                // Result: 3 List with 14 elements - 1 entry for each board and temperature
+                {
+                    List<double> uniformity10 = new List<double>();
+                    List<double> uniformity25 = new List<double>();
+                    List<double> uniformity50 = new List<double>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        uniformity10.Add(calcUniformity(temp10[i]));
+                        uniformity25.Add(calcUniformity(temp25[i]));
+                        uniformity50.Add(calcUniformity(temp50[i]));
+                    }
+
+                    ExportData.WriteCsv(uniformity10, "evalf446_noOut_uniformity10.csv");
+                    ExportData.WriteCsv(uniformity25, "evalf446_noOut_uniformity25.csv");
+                    ExportData.WriteCsv(uniformity50, "evalf446_noOut_uniformity50.csv");
+                }
+
+                // Graph 4: Intra HD per temperature
+                {
+                    List<double> intraHD10 = new List<double>();
+                    List<double> intraHD25 = new List<double>();
+                    List<double> intraHD50 = new List<double>();
+
+                    for (int i = 0; i < nBoards; i++)
+                    {
+                        intraHD10.Add(calcIntraHD(knownFP10[i], temp10[i]));
+                        intraHD25.Add(calcIntraHD(knownFP25[i], temp10[i]));
+                        intraHD50.Add(calcIntraHD(knownFP50[i], temp10[i]));
+                    }
+
+                    ExportData.WriteCsv(intraHD10, "evalf446_noOut_intraHD10.csv");
+                    ExportData.WriteCsv(intraHD25, "evalf446_noOut_intraHD25.csv");
+                    ExportData.WriteCsv(intraHD50, "evalf446_noOut_intraHD50.csv");
+                }
+
+                // Graph 5: Uniqueness per temperature
+                // Binomial Coefficient of (14 over 2) = 91 entries per temperature
+                {
+                    List<double> uniqueness10 = new List<double>();
+                    List<double> uniqueness25 = new List<double>();
+                    List<double> uniqueness50 = new List<double>();
+
+                    for (int i = 0; i < nBoards - 1; i++)
+                    {
+                        for (int j = i + 1; j < nBoards; j++)
+                        {
+                            uniqueness10.Add(calcUniqueness(temp10[i], temp10[j]));
+                            uniqueness25.Add(calcUniqueness(temp25[i], temp25[j]));
+                            uniqueness50.Add(calcUniqueness(temp50[i], temp50[j]));
+                        }
+                    }
+
+                    ExportData.WriteCsv(uniqueness10, "evalf446_noOut_uniqueness10.csv");
+                    ExportData.WriteCsv(uniqueness25, "evalf446_noOut_uniqueness25.csv");
+                    ExportData.WriteCsv(uniqueness50, "evalf446_noOut_uniqueness50.csv");
+                }
+            }
+        }
+
+
+
+
+
+
         //private static void evaluation3()
         //{
         //    using (var ctx = new Database.binaireDbContext())
@@ -1288,8 +1627,8 @@ namespace binaire
         //        }
         //    }
         //}
-    
-        
+
+
         private static void saveFuzzyExtractorData(uint boardid, uint temp)
         {
             uint addressStart = 0;
