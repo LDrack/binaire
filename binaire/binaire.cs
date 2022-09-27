@@ -235,7 +235,11 @@ namespace binaire
                     //catch (Exception ex) { Console.WriteLine(ex.Message); }
 
 
-                    try { evaluationf446WithoutOutliers(); }
+
+
+
+
+                    try { evaluationf446(); }
                     catch (Exception ex) { Console.WriteLine(ex.Message); }
 
                     //saveFuzzyExtractorData(4, 50);
@@ -909,17 +913,40 @@ namespace binaire
 
 
         // Temperature data from all 14 boards
+        // Here, I will try to fill in some comments on what exactly I'm doing.
+        // See this as a sort of tutorial to fetch data from the DB, do calculations and save a CSV file.
         private static void evaluation2()
         {
+            // This using ctx is boilerplate code for Entity Framework. It tells us which database we want to connect to.
             using (var ctx = new Database.binaireDbContext())
             {
+                // I have 14 different boards in my database. From each, I took 50 readings for each temperature settings.
                 const int nBoards = 14;
                 const int nReadings = 50;
 
+                // I want to have all relevant entries from the DB here so I can use them in C#.
+                // I create a list of lists for each temperature.
                 List<List<Reading>> temp10 = new List<List<Reading>>();
                 List<List<Reading>> temp25 = new List<List<Reading>>();
                 List<List<Reading>> temp50 = new List<List<Reading>>();
 
+                // This is how you get entries from the database.
+                // Consider this loop like this: get all entries from boardID 4 first, then from boardID 5 afterwards.
+                // BoardID 17 will be the last, giving me my 14 boards in total.
+                // I will save 50 readings from the first board in each list, then 50 from the next, and so on.
+                // In the end, each list contains 14 sublists, each containing 50 readings, making in total 50 * 14 = 700 entries.
+
+                // How do I know the boardIDs?
+                // Look in the database. The F401 boards I used were assigned the IDs 4-17, so this is what I use here.
+
+                // How do I know the ReadingIds?
+                // Look in the database. Before I started the measurements, the last Reading in the table had ID 2632.
+                // So the first one I took was 2633 - you can see in the code that it was done at 10°C.
+                // The first one done at 25°C was ReadingId 3344. The first one done at 50°C was ReadingId 4044.
+
+                // But you took exactly 700 measurements for each temperature. So why 3343 - 2633 == 710?
+                // I botched some measurements. 10 entries had to be deleted from the database.
+                // In truth, there were 700 measurements, but the IDs don't tell the whole story.
                 for (int i = 0; i < nBoards; i++)
                 {
                     int boardNr = i + 4;    // IDs 4--17
@@ -934,10 +961,13 @@ namespace binaire
                                                      && p.ReadingId <= 4743).ToList());
                 }
 
+                // Next, I want to calculate the known Fingerprints of each board for each temperature.
+                // I use my function calcKnownFP() for that, which takes a List of readings - exactly what I just got from the database.
                 List<byte[]> knownFP10 = new List<byte[]>();
                 List<byte[]> knownFP25 = new List<byte[]>();
                 List<byte[]> knownFP50 = new List<byte[]>();
 
+                // Again, I loop from 0 to 13, giving me my 14 boards.
                 for (int i = 0; i < nBoards; i++)
                 {
                     knownFP10.Add(calcKnownFP(temp10[i]));
@@ -947,6 +977,9 @@ namespace binaire
 
                 // Graph 1: Temperatures
                 // Result: 3 List of dimensions 14x50 - 50 entries for each board and temperature
+
+                // Basically, I just loop through the lists and pull out the relevant data.
+                // I then save the results to a CSV file, which I further manipulate in Matlab to create the graphs.
                 {
                     List<List<double>> temperatures10 = new List<List<double>>();
                     List<List<double>> temperatures25 = new List<List<double>>();
@@ -978,6 +1011,9 @@ namespace binaire
 
                 // Graph 2: Intra HD of all measurements compared with FK25
                 // Result: 3 List of dimensions 14x50 - 50 entries for each board and temperature
+
+                // Here, I compare the measurements I took with the known Fingerprint I calculated for each board.
+                // Important: I compare all measurements to the known FP taken at 25°C.
                 {
                     List<List<double>> intraHD25_10 = new List<List<double>>();
                     List<List<double>> intraHD25_25 = new List<List<double>>();
